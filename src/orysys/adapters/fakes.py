@@ -1,7 +1,10 @@
+from collections import defaultdict
 from collections.abc import AsyncIterator, Sequence
 
 from orysys.domain.evidence import Evidence
 from orysys.domain.identity import AccessScope
+from orysys.domain.ingestion import DocumentChunk, IndexWriteResult
+from orysys.ports.ingestion import SparseVector
 from orysys.ports.models import ModelRequest, ModelResult
 from orysys.ports.retrieval import SearchOptions, SearchResult
 
@@ -48,3 +51,31 @@ class InMemoryKnowledgeIndex:
             reverse=True,
         )
         return SearchResult(evidence=tuple(ranked[: options.limit]))
+
+
+class InMemoryVectorWriter:
+    def __init__(self) -> None:
+        self.records: dict[str, dict[str, DocumentChunk]] = defaultdict(dict)
+
+    async def upsert_document(
+        self,
+        namespace: str,
+        chunks: Sequence[DocumentChunk],
+        dense_vectors: Sequence[Sequence[float]],
+        sparse_vectors: Sequence[SparseVector],
+    ) -> IndexWriteResult:
+        if len(chunks) != len(dense_vectors) or len(chunks) != len(sparse_vectors):
+            raise ValueError("Chunk and vector counts must match")
+        current = self.records[namespace]
+        prefix = f"{chunks[0].document_id}:" if chunks else ""
+        existing = {record_id for record_id in current if record_id.startswith(prefix)}
+        incoming = {chunk.vector_id for chunk in chunks}
+        for stale_id in existing - incoming:
+            del current[stale_id]
+        for chunk in chunks:
+            current[chunk.vector_id] = chunk
+        return IndexWriteResult(
+            inserted=len(incoming - existing),
+            unchanged=len(incoming & existing),
+            deleted=len(existing - incoming),
+        )

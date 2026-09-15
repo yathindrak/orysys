@@ -4,10 +4,11 @@ Orysys is an access-scoped enterprise knowledge assistant. It is designed to
 produce evidence-backed answers, expose safe execution activity, and keep model
 decisions inside deterministic authorization and validation controls.
 
-The repository is currently at the product-baseline stage: domain contracts,
-provider ports, deterministic test adapters, configuration, and a FastAPI health
-boundary are available. Retrieval, LangGraph orchestration, Streamlit, and live
-provider adapters follow in later work packages.
+The repository currently includes the product baseline and document-ingestion
+pipeline: domain contracts, provider ports, deterministic test adapters,
+configuration, FastAPI health boundaries, a synthetic bank corpus, Cloudflare
+embeddings, corpus-fitted BM25 encoding, and idempotent Pinecone writes. Query-time
+retrieval, LangGraph orchestration, and Streamlit follow in later work packages.
 
 ## Requirements
 
@@ -31,6 +32,26 @@ profile.
 Copy `.env.example` to `.env` only for local development. Never commit tokens,
 credentials, customer content, or production traces.
 
+## Corpus ingestion
+
+Run the complete pipeline with deterministic local adapters:
+
+```bash
+uv run python -m orysys.ingestion.cli
+```
+
+After configuring Cloudflare and Pinecone in `.env`, ingest the sample corpus into
+the live index:
+
+```bash
+uv run python -m orysys.ingestion.cli --live
+```
+
+The command parses and validates the manifest, creates structure-aware chunks,
+fits and persists BM25 parameters, generates L2-normalized dense embeddings, and
+reconciles deterministic records in the tenant namespace. Repeating an unchanged
+ingestion produces zero inserts and deletes.
+
 ## Architecture
 
 The system is a modular monolith with a separate MCP process planned at the
@@ -52,7 +73,12 @@ Implemented in the baseline:
 - deterministic fake adapters for credential-free tests;
 - validated environment settings and FastAPI health endpoints;
 - lint, formatting, type-checking, test, and CI configuration.
+- deterministic sample corpus with access-control and evaluation fixtures;
+- Markdown, text, structured JSON, and text-native PDF loaders;
+- structure-aware chunking with stable document, chunk, and content hashes;
+- corpus-fitted BM25 parameters in `data/index/bm25.json`;
+- Cloudflare embedding and Pinecone index-writer adapters;
+- dry-run and live ingestion CLI with idempotent stale-record reconciliation.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.
-

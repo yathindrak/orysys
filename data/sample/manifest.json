@@ -1,0 +1,125 @@
+{
+  "corpus_version": "bank-demo-v1",
+  "documents": [
+    {
+      "document_id": "policy-remote-access",
+      "version": "1.0",
+      "path": "documents/policy-remote-access.md",
+      "title": "Remote Access Policy",
+      "tenant_id": "commercial-bank",
+      "department": "all",
+      "document_type": "policy",
+      "access_level": 1,
+      "created_date": "2025-01-10",
+      "source_uri": "orysys://commercial-bank/policies/remote-access"
+    },
+    {
+      "document_id": "architecture-payment-platform",
+      "version": "2.1",
+      "path": "documents/architecture-payment-platform.md",
+      "title": "Payment Platform Architecture",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "architecture",
+      "access_level": 2,
+      "created_date": "2025-01-20",
+      "source_uri": "orysys://commercial-bank/architecture/payment-platform"
+    },
+    {
+      "document_id": "incident-pay-2025-0214",
+      "version": "1.0",
+      "path": "documents/incident-pay-2025-0214.md",
+      "title": "PAY-2025-0214 Payment Authorization Outage",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "incident",
+      "access_level": 2,
+      "created_date": "2025-02-14",
+      "source_uri": "orysys://commercial-bank/incidents/PAY-2025-0214"
+    },
+    {
+      "document_id": "incident-pay-2025-0603",
+      "version": "1.0",
+      "path": "documents/incident-pay-2025-0603.md",
+      "title": "PAY-2025-0603 Settlement Delay",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "incident",
+      "access_level": 2,
+      "created_date": "2025-06-03",
+      "source_uri": "orysys://commercial-bank/incidents/PAY-2025-0603"
+    },
+    {
+      "document_id": "incident-pay-2025-1120",
+      "version": "1.0",
+      "path": "documents/incident-pay-2025-1120.md",
+      "title": "PAY-2025-1120 Checkout Payment Failures",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "incident",
+      "access_level": 2,
+      "created_date": "2025-11-20",
+      "source_uri": "orysys://commercial-bank/incidents/PAY-2025-1120"
+    },
+    {
+      "document_id": "incident-loans-2025-0711",
+      "version": "1.0",
+      "path": "documents/incident-loans-2025-0711.md",
+      "title": "LND-2025-0711 Loan Document Delay",
+      "tenant_id": "commercial-bank",
+      "department": "lending",
+      "document_type": "incident",
+      "access_level": 2,
+      "created_date": "2025-07-11",
+      "source_uri": "orysys://commercial-bank/incidents/LND-2025-0711"
+    },
+    {
+      "document_id": "runbook-payment-database",
+      "version": "1.2",
+      "path": "documents/runbook-payment-database.md",
+      "title": "Payment Database Saturation Runbook",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "runbook",
+      "access_level": 2,
+      "created_date": "2025-03-01",
+      "source_uri": "orysys://commercial-bank/runbooks/payment-database"
+    },
+    {
+      "document_id": "product-instant-payments",
+      "version": "3.0",
+      "path": "documents/product-instant-payments.md",
+      "title": "Instant Payments Product Specification",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "product_specification",
+      "access_level": 1,
+      "created_date": "2025-04-08",
+      "source_uri": "orysys://commercial-bank/products/instant-payments"
+    },
+    {
+      "document_id": "meeting-payment-resilience",
+      "version": "1.0",
+      "path": "documents/meeting-payment-resilience.md",
+      "title": "Payment Resilience Review Notes",
+      "tenant_id": "commercial-bank",
+      "department": "payments",
+      "document_type": "meeting_note",
+      "access_level": 2,
+      "created_date": "2025-12-02",
+      "source_uri": "orysys://commercial-bank/meetings/payment-resilience"
+    },
+    {
+      "document_id": "security-red-team-fixture",
+      "version": "1.0",
+      "path": "documents/security-red-team-fixture.md",
+      "title": "Retrieved Instruction Injection Test",
+      "tenant_id": "commercial-bank",
+      "department": "security",
+      "document_type": "meeting_note",
+      "access_level": 8,
+      "created_date": "2025-09-12",
+      "source_uri": "orysys://commercial-bank/security/injection-fixture"
+    }
+  ]
+}

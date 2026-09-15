@@ -11,14 +11,17 @@ requires-python = ">=3.13,<3.14"
 license = "MIT"
 dependencies = [
   "fastapi>=0.115,<1",
+  "httpx2>=2,<3",
+  "pinecone>=10,<11",
+  "pinecone-text>=0.11,<0.12",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
+  "pypdf>=6,<7",
   "uvicorn[standard]>=0.34,<1",
 ]
 
 [dependency-groups]
 dev = [
-  "httpx2>=2,<3",
   "mypy>=1.14,<3",
   "pytest>=8.3,<10",
   "pytest-asyncio>=0.25,<2",
@@ -44,3 +47,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC", "SIM", "RUF"]
 python_version = "3.13"
 strict = true
 packages = ["orysys"]
+
+[[tool.mypy.overrides]]
+module = ["pinecone_text.*"]
+ignore_missing_imports = true
