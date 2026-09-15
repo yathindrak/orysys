@@ -37,10 +37,22 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias="CLOUDFLARE_EMBEDDING_DIMENSIONS",
     )
+    cloudflare_chat_model: str = Field(
+        default="@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        validation_alias="CLOUDFLARE_CHAT_MODEL",
+    )
+    cloudflare_chat_max_tokens: int = Field(
+        default=4096, ge=1, validation_alias="CLOUDFLARE_CHAT_MAX_TOKENS"
+    )
     pinecone_api_key: SecretStr | None = Field(default=None, validation_alias="PINECONE_API_KEY")
     pinecone_index: str | None = Field(default=None, validation_alias="PINECONE_INDEX")
     database_url: SecretStr | None = Field(default=None, validation_alias="DATABASE_URL")
     redis_url: SecretStr | None = Field(default=None, validation_alias="REDIS_URL")
+    langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
+    langsmith_project: str = Field(
+        default="orysys-development", validation_alias="LANGSMITH_PROJECT"
+    )
+    langsmith_tracing: bool = Field(default=False, validation_alias="LANGSMITH_TRACING")
 
     def require_ingestion_credentials(self) -> None:
         required = {
@@ -52,6 +64,15 @@ class Settings(BaseSettings):
         missing = sorted(name for name, value in required.items() if value is None)
         if missing:
             raise ValueError(f"Missing ingestion settings: {', '.join(missing)}")
+
+    def require_chat_credentials(self) -> None:
+        required = {
+            "CLOUDFLARE_ACCOUNT_ID": self.cloudflare_account_id,
+            "CLOUDFLARE_API_TOKEN": self.cloudflare_api_token,
+        }
+        missing = sorted(name for name, value in required.items() if value is None)
+        if missing:
+            raise ValueError(f"Missing chat settings: {', '.join(missing)}")
 
 
 @lru_cache

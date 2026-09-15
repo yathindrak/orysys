@@ -10,17 +10,23 @@ from orysys.ports.retrieval import SearchOptions, SearchResult
 
 
 class ScriptedChatModel:
-    def __init__(self, response: str, *, model: str = "scripted-test-model") -> None:
-        self._response = response
+    def __init__(
+        self, response: str | Sequence[str], *, model: str = "scripted-test-model"
+    ) -> None:
+        self._responses = [response] if isinstance(response, str) else list(response)
         self._model = model
+        self.requests: list[ModelRequest] = []
+        self.call_count = 0
 
     async def complete(self, request: ModelRequest) -> ModelResult:
-        del request
-        return ModelResult(text=self._response, model=self._model)
+        self.requests.append(request)
+        response = self._responses[min(self.call_count, len(self._responses) - 1)]
+        self.call_count += 1
+        return ModelResult(text=response, model=self._model)
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[str]:
-        del request
-        for token in self._response.split():
+        result = await self.complete(request)
+        for token in result.text.split():
             yield f"{token} "
 
 

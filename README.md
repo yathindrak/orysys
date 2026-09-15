@@ -8,8 +8,8 @@ The repository currently includes the product baseline and document-ingestion
 pipeline: domain contracts, provider ports, deterministic test adapters,
 configuration, FastAPI health boundaries, a synthetic bank corpus, Cloudflare
 embeddings, corpus-fitted BM25 encoding, idempotent Pinecone writes, scoped hybrid
-retrieval, and hosted reranking. LangGraph orchestration and Streamlit follow in
-later work packages.
+retrieval, hosted reranking, and the first grounded LangGraph answer path. FastAPI
+streaming and Streamlit follow in later work packages.
 
 ## Requirements
 
@@ -68,6 +68,18 @@ uv run python -m orysys.evals.retrieval
 The versioned results are stored under `evals/results/` and documented in
 [`evals/README.md`](evals/README.md).
 
+## Grounded answer graph
+
+Run one live access-scoped question through retrieval, structured answer generation,
+citation validation, and the bounded repair path:
+
+```bash
+uv run python -m orysys.graph.cli "What caused PAY-DB-042?"
+```
+
+The command prints the validated answer, evidence metadata, validation results, and
+ordered public event types. It does not print retrieved excerpts or credentials.
+
 ## Architecture
 
 The system is a modular monolith with a separate MCP process planned at the
@@ -98,6 +110,9 @@ Implemented in the baseline:
 - query-time dense and BM25 weighting with server-derived metadata filters;
 - evidence conversion, hosted reranking, and deterministic reranker fallback;
 - repeatable retrieval evaluation with recall, reciprocal-rank, and leakage metrics.
+- explicit direct-answer `StateGraph` with scoped retrieval and structured output;
+- evidence-ledger citation checks, one repair attempt, and safe insufficient-evidence output;
+- redacted structured logging and manually scoped LangSmith traces.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.

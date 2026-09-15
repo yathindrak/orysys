@@ -12,11 +12,14 @@ license = "MIT"
 dependencies = [
   "fastapi>=0.115,<1",
   "httpx2>=2,<3",
+  "langgraph>=1.2,<2",
+  "langsmith>=0.4,<1",
   "pinecone>=10,<11",
   "pinecone-text>=0.11,<0.12",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
   "pypdf>=6,<7",
+  "structlog>=25,<26",
   "uvicorn[standard]>=0.34,<1",
 ]
 

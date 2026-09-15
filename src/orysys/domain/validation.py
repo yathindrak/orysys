@@ -24,3 +24,19 @@ def validate_citation_ids(
         passed=True,
         public_message="All citations match authorized evidence.",
     )
+
+
+def validate_answer_citations(
+    claim_citations: tuple[tuple[str, ...], ...], authorized_evidence_ids: set[str]
+) -> tuple[ValidationResult, ...]:
+    cited_ids = {item for citations in claim_citations for item in citations}
+    completeness = ValidationResult(
+        rule="citations.claim_completeness",
+        passed=bool(claim_citations) and all(claim_citations),
+        public_message=(
+            "Every claim includes evidence."
+            if claim_citations and all(claim_citations)
+            else "One or more claims are missing evidence."
+        ),
+    )
+    return (completeness, validate_citation_ids(cited_ids, authorized_evidence_ids))
