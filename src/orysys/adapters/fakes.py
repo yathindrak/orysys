@@ -53,6 +53,14 @@ class InMemoryKnowledgeIndex:
         return SearchResult(evidence=tuple(ranked[: options.limit]))
 
 
+class IdentityReranker:
+    async def rerank(
+        self, query: str, candidates: tuple[Evidence, ...], limit: int
+    ) -> tuple[Evidence, ...]:
+        del query
+        return candidates[:limit]
+
+
 class InMemoryVectorWriter:
     def __init__(self) -> None:
         self.records: dict[str, dict[str, DocumentChunk]] = defaultdict(dict)

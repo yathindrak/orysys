@@ -15,8 +15,15 @@ def test_viewer_scope_is_derived_from_verified_principal() -> None:
 
     assert scope.namespace == "bank-a"
     assert scope.metadata_filter == {
-        "access_level": {"$lte": 2},
-        "department": {"$in": ["payments"]},
+        "$and": [
+            {"access_level": {"$lte": 2}},
+            {
+                "$or": [
+                    {"department": "all"},
+                    {"department": {"$in": ["payments"]}},
+                ]
+            },
+        ]
     }
     assert KNOWLEDGE_SEARCH in scope.allowed_tools
     assert ANALYTICS not in scope.allowed_tools

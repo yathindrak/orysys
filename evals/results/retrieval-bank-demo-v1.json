@@ -1,0 +1,209 @@
+{
+  "corpus_version": "bank-demo-v1",
+  "namespace": "commercial-bank",
+  "limit": 8,
+  "candidate_count": 28,
+  "configurations": [
+    {
+      "name": "dense-only",
+      "alpha": 1.0,
+      "reranker": "none",
+      "mean_recall_at_k": 0.9166666666666666,
+      "mean_reciprocal_rank": 0.8333333333333334,
+      "leakage_count": 0,
+      "cases": [
+        {
+          "case_id": "exact-error-code",
+          "retrieved_documents": [
+            "incident-pay-2025-1120",
+            "incident-pay-2025-0214",
+            "runbook-payment-database",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0603",
+            "policy-remote-access"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "semantic-payment-failure",
+          "retrieved_documents": [
+            "incident-pay-2025-0214",
+            "incident-pay-2025-1120",
+            "runbook-payment-database",
+            "product-instant-payments",
+            "incident-pay-2025-0603",
+            "architecture-payment-platform"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "annual-outage-research",
+          "retrieved_documents": [
+            "runbook-payment-database",
+            "incident-pay-2025-1120",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0214",
+            "product-instant-payments",
+            "architecture-payment-platform"
+          ],
+          "recall_at_k": 0.75,
+          "reciprocal_rank": 0.5,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "unauthorized-injection",
+          "retrieved_documents": [
+            "policy-remote-access",
+            "runbook-payment-database",
+            "product-instant-payments",
+            "incident-pay-2025-0603"
+          ],
+          "recall_at_k": null,
+          "reciprocal_rank": null,
+          "leakage_detected": false,
+          "degraded": false
+        }
+      ]
+    },
+    {
+      "name": "hybrid",
+      "alpha": 0.5,
+      "reranker": "none",
+      "mean_recall_at_k": 0.9166666666666666,
+      "mean_reciprocal_rank": 0.8333333333333334,
+      "leakage_count": 0,
+      "cases": [
+        {
+          "case_id": "exact-error-code",
+          "retrieved_documents": [
+            "incident-pay-2025-1120",
+            "incident-pay-2025-0214",
+            "runbook-payment-database",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0603"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "semantic-payment-failure",
+          "retrieved_documents": [
+            "incident-pay-2025-0214",
+            "product-instant-payments",
+            "incident-pay-2025-0603",
+            "incident-pay-2025-1120",
+            "runbook-payment-database"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "annual-outage-research",
+          "retrieved_documents": [
+            "runbook-payment-database",
+            "incident-pay-2025-1120",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0214",
+            "product-instant-payments"
+          ],
+          "recall_at_k": 0.75,
+          "reciprocal_rank": 0.5,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "unauthorized-injection",
+          "retrieved_documents": [
+            "product-instant-payments",
+            "policy-remote-access",
+            "runbook-payment-database",
+            "incident-pay-2025-0603"
+          ],
+          "recall_at_k": null,
+          "reciprocal_rank": null,
+          "leakage_detected": false,
+          "degraded": false
+        }
+      ]
+    },
+    {
+      "name": "hybrid-reranked",
+      "alpha": 0.5,
+      "reranker": "bge-reranker-v2-m3",
+      "mean_recall_at_k": 0.9166666666666666,
+      "mean_reciprocal_rank": 1.0,
+      "leakage_count": 0,
+      "cases": [
+        {
+          "case_id": "exact-error-code",
+          "retrieved_documents": [
+            "incident-pay-2025-0214",
+            "incident-pay-2025-1120",
+            "runbook-payment-database",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0603"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "semantic-payment-failure",
+          "retrieved_documents": [
+            "incident-pay-2025-0214",
+            "incident-pay-2025-1120",
+            "meeting-payment-resilience",
+            "incident-pay-2025-0603",
+            "runbook-payment-database",
+            "architecture-payment-platform"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "annual-outage-research",
+          "retrieved_documents": [
+            "incident-pay-2025-1120",
+            "meeting-payment-resilience",
+            "product-instant-payments",
+            "runbook-payment-database",
+            "architecture-payment-platform",
+            "incident-pay-2025-0214"
+          ],
+          "recall_at_k": 0.75,
+          "reciprocal_rank": 1.0,
+          "leakage_detected": false,
+          "degraded": false
+        },
+        {
+          "case_id": "unauthorized-injection",
+          "retrieved_documents": [
+            "incident-pay-2025-0603",
+            "product-instant-payments",
+            "runbook-payment-database",
+            "policy-remote-access",
+            "meeting-payment-resilience"
+          ],
+          "recall_at_k": null,
+          "reciprocal_rank": null,
+          "leakage_detected": false,
+          "degraded": false
+        }
+      ]
+    }
+  ]
+}

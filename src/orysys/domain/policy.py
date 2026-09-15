@@ -20,14 +20,23 @@ def derive_access_scope(principal: Principal) -> AccessScope:
     """Derive retrieval and tool access only from verified identity data."""
 
     tools = frozenset().union(*(ROLE_TOOLS[role] for role in principal.roles))
-    metadata_filter: dict[str, object] = {
-        "access_level": {"$lte": principal.clearance},
-    }
+    clauses: list[dict[str, object]] = [
+        {"access_level": {"$lte": principal.clearance}},
+    ]
     if principal.departments:
-        metadata_filter["department"] = {"$in": sorted(principal.departments)}
+        clauses.append(
+            {
+                "$or": [
+                    {"department": "all"},
+                    {"department": {"$in": sorted(principal.departments)}},
+                ]
+            }
+        )
+    else:
+        clauses.append({"department": "all"})
     return AccessScope(
         namespace=principal.tenant_id,
-        metadata_filter=metadata_filter,
+        metadata_filter={"$and": clauses},
         allowed_tools=tools,
     )
 

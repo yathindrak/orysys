@@ -20,6 +20,15 @@ class PineconeBM25Encoder:
             encoded = [encoded]
         return [cast(SparseVector, vector) for vector in encoded]
 
+    def encode_query(self, text: str) -> SparseVector:
+        return cast(SparseVector, self._encoder.encode_queries(text))
+
     def dump(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._encoder.dump(str(path))
+
+    @classmethod
+    def load(cls, path: Path) -> "PineconeBM25Encoder":
+        instance = cls()
+        instance._encoder.load(str(path))
+        return instance

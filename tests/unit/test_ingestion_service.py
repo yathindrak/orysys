@@ -19,6 +19,10 @@ class RecordingSparseEncoder:
     def encode_documents(self, texts: Sequence[str]) -> list[SparseVector]:
         return [{"indices": [1], "values": [1.0]} for _ in texts]
 
+    def encode_query(self, text: str) -> SparseVector:
+        del text
+        return {"indices": [1], "values": [1.0]}
+
     def dump(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"documents": len(self.fitted)}), encoding="utf-8")
