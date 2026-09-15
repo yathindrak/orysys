@@ -1,0 +1,15 @@
+flowchart LR
+    User[Employee] --> UI[Streamlit UI]
+    UI -->|Bearer token + SSE| API[FastAPI API]
+    API --> Policy[Identity, rate limit, input policy]
+    Policy --> Runtime[Assistant runtime]
+    Runtime --> Graph[Explicit LangGraph workflow]
+    Graph --> Retrieval[Scoped hybrid retrieval]
+    Graph --> Tools[Authorized tool gateway]
+    Graph --> Validation[Evidence and response validation]
+    Retrieval --> Pinecone[(Pinecone)]
+    Tools --> MCP[MCP sidecar]
+    Graph --> Postgres[(PostgreSQL checkpoints)]
+    Policy --> Redis[(Redis token bucket)]
+    Graph --> LangSmith[LangSmith traces]
+
