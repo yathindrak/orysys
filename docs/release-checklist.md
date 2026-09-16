@@ -1,6 +1,6 @@
 # Orysys release checklist
 
-Use one exact commit for CI, live evidence, and the recording. Do not paste secrets,
+Use one exact commit for CI and live evidence. Do not paste secrets,
 raw tokens, `.env` content, restricted excerpts, or approval tokens into any artifact.
 
 ## Repository gates
@@ -36,14 +36,12 @@ raw tokens, `.env` content, restricted excerpts, or approval tokens into any art
 - [ ] Trace metadata is redacted and matches the final commit/configuration
 - [ ] Optional selective judge report captured without replacing deterministic gates
 
-## Walkthrough and publication
+## Verification and publication
 
-- [ ] Follow [`demo-script.md`](demo-script.md) within 45 minutes
-- [ ] Show viewer denial, analyst tool success, and administrator approval
-- [ ] Show direct citations, bounded research, memory lifecycle, feedback, and limits
-- [ ] Show the exact commit and matching CI result
-- [ ] Recording reviewed for accidental credential or personal-data exposure
-- Recording URL: `________________`
+- [ ] Exercise viewer denial, analyst tool success, and administrator approval
+- [ ] Exercise direct citations, bounded research, memory lifecycle, feedback, and limits
+- [ ] Confirm the exact commit and matching CI result
+- [ ] Review all artifacts for accidental credential or personal-data exposure
 - [ ] Update [`release-audit.md`](release-audit.md) from Implemented to Verified only for
-      rows whose automated and walkthrough evidence now agree
-- [ ] Create the release tag from the demonstrated commit
+      rows whose automated and operator evidence now agree
+- [ ] Create the release tag from the verified commit

@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-16  
 Release candidate base: `8af2617` plus the current WP-15 changes  
-Final demonstrated commit: **capture after the WP-15 commit**
+Final verified commit: **capture after the WP-15 commit**
 
 Local repository verification on 2026-09-16: Ruff format/lint passed, strict mypy
 passed for 97 source files, all 90 tests passed, all three deterministic evaluation
@@ -14,27 +14,27 @@ evidence, not a substitute for the final public CI run.
 This is the status companion to the
 [`requirements-traceability.md`](requirements-traceability.md) acceptance matrix.
 “Implemented” means the code and deterministic repository evidence exist. “Verified”
-is deliberately reserved for requirements whose CI, live-provider, and walkthrough
-evidence have all been captured at the final demonstrated commit.
+is deliberately reserved for requirements whose CI, live-provider, and operator
+evidence have all been captured at the final verified commit.
 
 ## Status by requirement group
 
 | Requirement group | Status | Repository evidence | Evidence still required |
 |---|---|---|---|
-| Objective and backend (`OBJ`, `BE`) | Implemented | `src/orysys/`, API contract/unit tests, CI quality gates | Final CI URL and request walkthrough |
-| Frontend (`UI`) | Implemented with limitations | Streamlit app, view-model/design tests, UI smoke | Browser walkthrough; no automatic SSE reconnect after network loss |
+| Objective and backend (`OBJ`, `BE`) | Implemented | `src/orysys/`, API contract/unit tests, CI quality gates | Final CI URL and request verification |
+| Frontend (`UI`) | Implemented with limitations | Streamlit app, view-model/design tests, UI smoke | Browser verification; no automatic SSE reconnect after network loss |
 | LangGraph and research (`LG`, `RLM`) | Implemented | Direct/research graph tests, checkpoint tests, bounded budgets | Live direct and annual-research traces |
 | Retrieval (`RAG`) | Implemented | Ingestion/retrieval contracts and checked-in retrieval report | Re-run live benchmark at final corpus/index version |
-| Memory (`MEM`) | Implemented | Repository, API, checkpoint, ownership, TTL, and deletion tests | Restart-and-recall walkthrough |
-| Tools and MCP (`TOOL`) | Implemented | Gateway, handler, authorization, MCP protocol/timeout tests | Analyst success and viewer-denial walkthrough |
+| Memory (`MEM`) | Implemented | Repository, API, checkpoint, ownership, TTL, and deletion tests | Restart-and-recall verification |
+| Tools and MCP (`TOOL`) | Implemented | Gateway, handler, authorization, MCP protocol/timeout tests | Analyst success and viewer-denial verification |
 | Models and observability (`LLM`, `OBS`) | Implemented; live proof pending | Provider contracts, redaction tests, telemetry spans; production now requires tracing | Redacted LangSmith trace IDs/URLs for final commit |
-| Security/auth/rate limits (`SEC`, `AUTH`, `RATE`) | Implemented with one policy limitation | OIDC, RBAC, approval, rate-limit, citation and adversarial tests; threat model | Browser role walkthrough; brand behavior is prompt policy, not a separate deterministic validator |
+| Security/auth/rate limits (`SEC`, `AUTH`, `RATE`) | Implemented with one policy limitation | OIDC, RBAC, approval, rate-limit, citation and adversarial tests; threat model | Browser role verification; brand behavior is prompt policy, not a separate deterministic validator |
 | Failure handling (`ERR`) | Implemented | Retry, cancellation, degradation, circuit and reliability tests | One controlled live degradation trace |
-| Sample data (`DATA`) | Implemented | Versioned synthetic corpus, manifest, loaders, fixtures | Confirm demonstrated index reports `bank-demo-v1` |
-| Extensions (`EXT`) | Implemented | Research isolation, approval, reranking, memory, feedback and Compose tests/config | Fresh-host Compose CI and live walkthrough evidence |
-| Release artifacts (`DEL`) | Partial | README, operations, Mermaid plus SVG diagram, CI, Compose, this audit and demo script | Public repository URL, final CI URL, recording URL and curated trace references |
+| Sample data (`DATA`) | Implemented | Versioned synthetic corpus, manifest, loaders, fixtures | Confirm verified index reports `bank-demo-v1` |
+| Extensions (`EXT`) | Implemented | Research isolation, approval, reranking, memory, feedback and Compose tests/config | Fresh-host Compose CI and live verification evidence |
+| Release artifacts (`DEL`) | Partial | README, operations, Mermaid plus SVG diagram, CI, Compose, this audit and release checklist | Public repository URL, final CI URL, and curated trace references |
 
-No group is marked **Verified** yet because the recording and matching live evidence are
+No group is marked **Verified** yet because the final CI run and matching live evidence are
 external artifacts and have not been supplied. This avoids turning configured capability
 into a false execution claim.
 
@@ -67,7 +67,7 @@ into a false execution claim.
 
 ## Release decision
 
-The repository is ready for final CI and the guided walkthrough when the automated
+The repository is ready for final CI and operator verification when the automated
 commands in [`release-checklist.md`](release-checklist.md) pass. Public release remains
-blocked until the exact commit, CI URL, live trace references, and recording URL are
-recorded without exposing credentials or restricted content.
+blocked until the exact commit, CI URL, and live trace references
+are recorded without exposing credentials or restricted content.

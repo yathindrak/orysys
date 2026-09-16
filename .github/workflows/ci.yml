@@ -41,7 +41,8 @@ jobs:
         env:
           POSTGRES_DB: orysys
           POSTGRES_USER: orysys
-          POSTGRES_PASSWORD: ci-postgres
+          # Ephemeral CI-only password for the service container, not a real secret.
+          POSTGRES_PASSWORD: ci-postgres # gitleaks:allow
         ports:
           - 5432:5432
         options: >-
@@ -50,7 +51,8 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      DATABASE_URL: postgresql://orysys:ci-postgres@127.0.0.1:5432/orysys
+      # Ephemeral CI-only credential, matches the postgres service above. Not a real secret.
+      DATABASE_URL: postgresql://orysys:ci-postgres@127.0.0.1:5432/orysys # gitleaks:allow
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -95,7 +97,7 @@ jobs:
         run: docker compose config -q
       - name: Build runtime image
         run: docker build --target runtime --tag orysys:local .
-      - name: Start pilot topology
+      - name: Start fake pilot topology (packaging check only)
         run: docker compose up --detach --wait postgres redis mcp-server api ui
       - name: Probe services
         run: |

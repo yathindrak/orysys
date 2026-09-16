@@ -62,7 +62,7 @@ class DirectAssistantRuntime:
         attributes = self._run_attributes(request, principal, run_id)
         async with self._telemetry.span("orysys.assistant", attributes):
             raw: dict[str, Any] = await self._graph.ainvoke(
-                initial, _checkpoint_config(request, principal)
+                initial, _langsmith_config(request, principal, run_id, route="direct")
             )
         state = cast(AssistantState, raw)
         return AssistantRunResult(
@@ -88,7 +88,7 @@ class DirectAssistantRuntime:
         async with self._telemetry.span("orysys.assistant", attributes):
             async for part in self._graph.astream(
                 initial,
-                _checkpoint_config(request, principal),
+                _langsmith_config(request, principal, run_id, route="direct"),
                 stream_mode="updates",
                 version="v2",
             ):
@@ -113,6 +113,11 @@ class DirectAssistantRuntime:
             "roles": sorted(role.value for role in principal.roles),
         }
 
+    def flush(self) -> None:
+        flush = getattr(self._telemetry, "flush", None)
+        if callable(flush):
+            flush()
+
 
 def _checkpoint_config(request: AssistantRequest, principal: Principal) -> RunnableConfig:
     thread_key = sha256(
@@ -121,3 +126,33 @@ def _checkpoint_config(request: AssistantRequest, principal: Principal) -> Runna
         ).encode()
     ).hexdigest()
     return {"configurable": {"thread_id": thread_key}}
+
+
+def _langsmith_config(
+    request: AssistantRequest, principal: Principal, run_id: str, *, route: str
+) -> RunnableConfig:
+    """Checkpoint config plus LangSmith tags/metadata for trace discovery.
+
+    Thread/checkpoint identity stays hashed (no raw tenant/subject in the
+    checkpoint key); the trace metadata carries only the safe identifiers the
+    evaluator needs to find the run: tenant, roles, thread, run, route.
+    """
+
+    config = _checkpoint_config(request, principal)
+    configurable = dict(config.get("configurable") or {})
+    tags = ["orysys", f"route:{route}", f"tenant:{principal.tenant_id}"]
+    metadata = {
+        "orysys_request_id": request.request_id,
+        "orysys_run_id": run_id,
+        "orysys_thread_id": request.thread_id,
+        "orysys_tenant": principal.tenant_id,
+        "orysys_roles": sorted(role.value for role in principal.roles),
+        "orysys_route": route,
+    }
+    return {
+        **config,
+        "configurable": configurable,
+        "run_name": f"orysys-{route}-{run_id[:8]}",
+        "tags": tags,
+        "metadata": metadata,
+    }

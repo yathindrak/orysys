@@ -1,4 +1,4 @@
-.PHONY: setup verify migrate-check compose-check image pilot pilot-live logs down
+.PHONY: setup verify migrate-check compose-check image pilot pilot-fake pilot-live logs down
 
 setup:
 	uv sync --locked --all-groups
@@ -16,15 +16,18 @@ migrate-check:
 
 compose-check:
 	docker compose config -q
+	docker compose -f compose.yaml -f compose.live.yaml config -q
 
 image:
 	docker build --target runtime -t orysys:local .
 
 pilot:
+	docker compose -f compose.yaml -f compose.live.yaml up --build --wait postgres redis mcp-server api ui
+
+pilot-fake:
 	docker compose up --build --wait postgres redis mcp-server api ui
 
-pilot-live:
-	docker compose -f compose.yaml -f compose.live.yaml up --build --wait postgres redis mcp-server api ui
+pilot-live: pilot
 
 logs:
 	docker compose logs --follow api ui mcp-server

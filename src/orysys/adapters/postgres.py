@@ -9,6 +9,7 @@ from orysys.application.conversations import (
     Conversation,
     ConversationMessage,
     ConversationStore,
+    ConversationSummary,
     _with_rolling_summary,
 )
 from orysys.domain.errors import ResourceNotFound
@@ -96,6 +97,67 @@ class PostgresConversationStore(ConversationStore):
                 ),
             )
         return updated
+
+    async def list(
+        self,
+        principal: Principal,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[ConversationSummary, ...]:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as connection:
+            rows = await (
+                await connection.execute(
+                    """SELECT conversation_id, created_at
+                        FROM conversations
+                        WHERE tenant_id = %s AND owner_subject = %s
+                        ORDER BY created_at DESC LIMIT %s OFFSET %s""",
+                    (principal.tenant_id, principal.subject, limit, offset),
+                )
+            ).fetchall()
+            if not rows:
+                return ()
+            conversation_ids = [row["conversation_id"] for row in rows]
+            counts = await (
+                await connection.execute(
+                    """SELECT conversation_id, COUNT(*) AS message_count,
+                              MAX(message_id) AS last_message_id
+                        FROM conversation_messages
+                        WHERE conversation_id = ANY(%s)
+                        GROUP BY conversation_id""",
+                    (conversation_ids,),
+                )
+            ).fetchall()
+            count_by_id = {
+                row["conversation_id"]: (row["message_count"], row["last_message_id"])
+                for row in counts
+            }
+            last_ids = [last_id for _, last_id in count_by_id.values() if last_id is not None]
+            preview_by_id: dict[str, str] = {}
+            if last_ids:
+                preview_rows = await (
+                    await connection.execute(
+                        """SELECT conversation_id, message_id, content
+                            FROM conversation_messages
+                            WHERE message_id = ANY(%s)""",
+                        (last_ids,),
+                    )
+                ).fetchall()
+                preview_by_id = {
+                    row["conversation_id"]: str(row["content"]).strip().replace("\n", " ")[:200]
+                    for row in preview_rows
+                }
+        return tuple(
+            ConversationSummary(
+                conversation_id=row["conversation_id"],
+                created_at=row["created_at"],
+                message_count=int(count_by_id.get(row["conversation_id"], (0, None))[0]),
+                preview=preview_by_id.get(row["conversation_id"], ""),
+            )
+            for row in rows
+        )
 
 
 class PostgresAuditRepository(AuditRepository):

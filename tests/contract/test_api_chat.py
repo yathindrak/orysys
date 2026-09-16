@@ -102,3 +102,32 @@ def test_unknown_conversation_uses_stable_public_error() -> None:
         "message": "The requested conversation was not found.",
         "retryable": False,
     }
+
+
+def test_list_conversations_returns_metadata_without_messages() -> None:
+    model = ScriptedChatModel(_model_answer())
+    runtime = DirectAssistantRuntime(
+        chat_model=model,
+        knowledge_index=InMemoryKnowledgeIndex([_evidence()]),
+    )
+    app = create_app(
+        Settings(environment="test", use_fake_adapters=True, auth_enabled=False),
+        runtime=runtime,
+    )
+    with TestClient(app) as client:
+        first = client.post("/v1/conversations").json()["conversation"]["conversation_id"]
+        second = client.post("/v1/conversations").json()["conversation"]["conversation_id"]
+        client.post(f"/v1/conversations/{first}/messages", json={"message": "First?"})
+        listed = client.get("/v1/conversations")
+        paged = client.get("/v1/conversations", params={"limit": 1, "offset": 1})
+        invalid = client.get("/v1/conversations", params={"limit": 0})
+
+    assert listed.status_code == 200
+    items = listed.json()["conversations"]
+    assert [item["conversation_id"] for item in items] == [second, first]
+    assert all("messages" not in item for item in items)
+    first_item = next(item for item in items if item["conversation_id"] == first)
+    assert first_item["message_count"] == 2
+    assert first_item["preview"] != ""
+    assert [item["conversation_id"] for item in paged.json()["conversations"]] == [first]
+    assert invalid.status_code == 422

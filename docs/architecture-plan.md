@@ -3,9 +3,9 @@
 Companion plans:
 
 - [`implementation-plan.md`](implementation-plan.md) defines the ordered backlog,
-  module interfaces, tests, commits, deployment work, and walkthrough preparation.
+  module interfaces, tests, commits, deployment work, and operator verification.
 - [`requirements-traceability.md`](requirements-traceability.md) maps every product
-  requirement to code, verification, and walkthrough evidence.
+  requirement to code, verification, and operator evidence.
 - [`research/dependency-health.md`](research/dependency-health.md) records dependency
   choices, maintenance evidence, licenses, and compatibility risks.
 
@@ -30,7 +30,7 @@ retrieved evidence, with visible execution, validation, and traces.
 
 Build Orysys v1 as a **modular monolith** with a separate lightweight MCP
 server process. Use FastAPI as the system boundary, Streamlit as a thin client,
-LangGraph as the orchestration engine, Cloudflare Workers AI as the development/walkthrough
+LangGraph as the orchestration engine, Cloudflare Workers AI as the development
 generation and embedding provider (default vendor; no OpenAI key required), Pinecone as the required search store, Neon Postgres
 for deployed durable graph checkpoints, Redis for rate limiting, and upstream Keycloak
 hosted by Skycloak for OIDC authentication. Cloudflare is called from FastAPI through
@@ -72,26 +72,28 @@ arbitrary code execution, and model-controlled authorization.
 ```mermaid
 flowchart LR
     User[Employee] --> UI[Streamlit UI]
-    UI -->|SSE chat request| API[FastAPI API]
-    API --> Gate[Auth, rate limit, input policy]
-    Gate --> App[Assistant application service]
-    App --> Graph[LangGraph workflow]
-
-    Graph --> Retrieval[Retrieval subgraph]
-    Graph --> Research[Bounded RLM research subgraph]
+    UI -->|OIDC login| Keycloak[Skycloak or local Keycloak]
+    UI -->|Bearer token + SSE| API[FastAPI API]
+    API --> Policy[Identity, rate limit, input policy]
+    Policy --> Runtime[Assistant runtime]
+    Runtime --> Graph[Explicit LangGraph workflow]
+    Graph --> Retrieval[Scoped hybrid retrieval]
     Graph --> Tools[Authorized tool gateway]
-    Graph --> Validate[Grounding and response validator]
-
+    Graph --> Approval[Interrupt and approval workflow]
+    Graph --> Validation[Evidence and response validation]
+    Graph --> Cloudflare[Cloudflare Workers AI]
     Retrieval --> Pinecone[(Pinecone)]
-    Research --> Retrieval
-    Tools --> Analysis[Constrained Python analytics]
     Tools --> MCP[MCP sidecar]
-    Graph --> Postgres[(PostgreSQL checkpoints)]
-    Gate --> Redis[(Redis token buckets)]
-    Graph --> LangSmith[LangSmith traces and evals]
-    Graph -->|typed activity events| API
-    API -->|SSE| UI
+    Graph --> Postgres[(PostgreSQL checkpoints and memory)]
+    API --> Feedback[(Reviewed feedback)]
+    Approval --> Postgres
+    Feedback --> Postgres
+    Policy --> Redis[(Redis token bucket)]
+    Graph --> LangSmith[LangSmith traces]
 ```
+
+The rendered copy is [`diagrams/system-context.svg`](diagrams/system-context.svg),
+generated from [`diagrams/system-context.mmd`](diagrams/system-context.mmd).
 
 ### Deployment units
 
@@ -101,7 +103,9 @@ flowchart LR
   a small project-owned design-system package supplies tokens and the few visual
   components needed by this application.
 - `mcp-server`: Dummy enterprise directory, service catalog, and incident tools.
-- `postgres`: A local Docker Compose profile for offline development and tests.
+- `postgres`: Core Compose PostgreSQL for conversations, rolling summaries,
+  long-term memory, audits, feedback, and LangGraph checkpoints. Host port 55432
+  avoids clashing with a local PostgreSQL on 5432; containers still use 5432.
 - `keycloak`: An optional local Compose profile using the same exported realm as the
   Skycloak-hosted environment.
 - `redis`: Distributed per-user token buckets and short-lived coordination data.
@@ -119,31 +123,36 @@ services internally.
 2. A Redis-backed token bucket consumes capacity for that user.
 3. Input validation enforces size, schema, accepted content type, and safety policy.
 4. The graph emits `run.started`, then the intent/planner produces a typed plan.
-5. A deterministic router selects direct RAG, bounded research, or an authorized tool
-   path.
-6. Retrieval always applies a server-built access filter before ranking.
-7. Complex multi-document requests fan out into isolated research tasks and reduce
+5. A deterministic router selects the direct RAG or bounded research path.
+6. Retrieval always applies a server-built access filter before ranking, then the
+   direct path runs deterministic `enrich_with_mcp` allow-list enrichment to add
+   citable `mcp:*` evidence when the principal holds `mcp.read`.
+7. Complex multi-document requests fan out into isolated research tasks
+   (`plan`/`discover`/`partition`/`worker`/`reduce`/`retry_gaps`) and reduce
    structured findings.
-8. The response node produces claims linked to evidence IDs.
+8. The response node produces claims linked to evidence IDs. The Streamlit client
+   renders the summary plus per-claim bullets, and the sidebar history picker
+   reloads prior owner-scoped threads via `GET /v1/conversations`.
 9. Validators check authorization, citations, response schema, and brand/safety rules.
 10. One bounded repair attempt is allowed. A second failure returns an explicit,
     grounded partial answer or a safe failure.
 11. The graph writes the conversation checkpoint and emits `run.completed`.
 
-### Proposed top-level graph
+### Implemented top-level graphs
 
 ```text
+Direct (src/orysys/graph/builder.py)
 START
   -> input_policy
   -> understand_and_plan
-  -> route
-       -> retrieval_subgraph -----------+
-       -> research_subgraph ------------+-> compose_answer
-       -> authorized_tool_subgraph -----+       -> validate_answer
-                                                   -> repair_once --+
-                                                   -> update_memory  |
-                                                   -> safe_failure <-+
-                                                   -> END
+  -> retrieve
+  -> enrich_with_mcp
+  -> compose_answer -+-> validate_answer -+-> finalize -> END
+                     |                     +-> repair_once -> validate_answer
+                     +-> safe_failure -> END
+
+Research (src/orysys/research/runtime.py)
+START -> plan -> discover -> partition -> worker -> reduce -> retry_gaps -> compose -> END
 ```
 
 The defined agent roles map to graph responsibilities rather than four
@@ -470,7 +479,7 @@ boundary.
 │   ├── adrs/
 │   ├── research/
 │   ├── threat-model.md
-│   └── demo-script.md
+│   └── operations.md
 └── compose.yaml
 ```
 
@@ -525,7 +534,7 @@ Code rules:
 - Add thumbs-up/down feedback, optional notes, audit metadata, and reviewed export to a
   LangSmith evaluation dataset.
 - Finish the architecture diagram, README, assumptions/trade-offs, trace examples, and
-  a timed walkthrough script.
+  operator verification notes.
 
 ## 15. Release scope decisions
 
@@ -563,7 +572,7 @@ Code rules:
 | [Lucide](https://github.com/lucide-icons/lucide) | Adopt a small, pinned static SVG subset | Use the official MIT-licensed icon set, keep an allow-listed project registry, and record the source version. Do not add a JavaScript runtime or accept arbitrary icon/HTML input. |
 | Zilliz Cloud / Milvus | Do not use in v1 | It supports hybrid/full-text search, but the product requirement is a single search store for v1: Pinecone. The `HybridRetriever` port keeps a later migration possible without carrying two vector databases in v1. |
 | Neon | Adopt for the deployed Postgres target | It is standard managed Postgres and can back durable checkpoints/memory through the normal connection string. Keep local Postgres in a Compose profile for reproducibility. |
-| Cloudflare Workers AI | Adopt for development/walkthrough generation and embeddings | Use `@cf/qwen/qwen3-30b-a3b-fp8` (default generation, 32K context) and `@cf/qwen/qwen3-embedding-0.6b` (1,024 dims, chunk cap 2,000 tokens) through async Python REST adapters. `@cf/zai-org/glm-4.7-flash` (131K context) is an evaluated alternate via named config, not auto-retry. Free plan is 10,000 Neurons/day (reset 00:00 UTC, $0.011/1K beyond, $5/mo paid minimum); `glm-5.x` and listed frontier models are paid-only. Function calling is beta — validate plan/tool args with Pydantic JSON Schema. Token stays server-side; per-run budgets sit below the daily pool (text ~300 RPM, embeddings ~3,000 RPM). |
+| Cloudflare Workers AI | Adopt for development generation and embeddings | Use `@cf/qwen/qwen3-30b-a3b-fp8` (default generation, 32K context) and `@cf/qwen/qwen3-embedding-0.6b` (1,024 dims, chunk cap 2,000 tokens) through async Python REST adapters. `@cf/zai-org/glm-4.7-flash` (131K context) is an evaluated alternate via named config, not auto-retry. Free plan is 10,000 Neurons/day (reset 00:00 UTC, $0.011/1K beyond, $5/mo paid minimum); `glm-5.x` and listed frontier models are paid-only. Function calling is beta — validate plan/tool args with Pydantic JSON Schema. Token stays server-side; per-run budgets sit below the daily pool (text ~300 RPM, embeddings ~3,000 RPM). |
 | ORM / migrations | Start without an ORM; use Alembic only for application-owned tables | LangGraph's Postgres checkpointer manages its own persistence. Small feedback/audit repositories can use Psycopg with typed row mapping; adopt SQLAlchemy only if the relational model becomes complex enough to justify it. |
 | Auth0 | Do not use in v1 | It is a sound product, but it does not match the product requirement for Keycloak-compatible OIDC once Keycloak is available. |
 | [Skycloak](https://skycloak.io/docs/integrations/introduction/) | Adopt as managed upstream Keycloak | This satisfies the open-source Keycloak option while avoiding identity-server operations. Use only portable OIDC/JWKS integration and keep a local Keycloak realm/profile so managed hosting is replaceable. |
@@ -591,9 +600,9 @@ generic OpenAI-protocol fallback (different base URL/key, off by default) withou
 [pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/), and
 [Workers AI errors](https://developers.cloudflare.com/workers-ai/platform/errors/). Do not send real customer data to Workers AI in v1; use synthetic documents. Do not claim regional residency from the base product.
 
-## 16. Guided walkthrough plan
+## 16. Operator verification plan
 
-The guided walkthrough should show behavior, not slides alone:
+Verify behavior directly against the running stack, not slides alone:
 
 1. A viewer asks a grounded policy question and opens its evidence.
 2. An analyst asks the annual payment-outage question; the activity panel shows plan,
@@ -612,10 +621,9 @@ The guided walkthrough should show behavior, not slides alone:
 - Exact pinned versions after installing the candidate dependency set together.
 - Pinecone index dimension, candidate count, BM25 fitting strategy, hybrid `alpha`, and
   reranker choice, settled through the retrieval evaluation set rather than intuition.
-- Cloudflare model availability, daily allocation, and acceptable walkthrough budget; keep the
-  selected model IDs in settings and run the provider compatibility suite before the walkthrough.
-- Whether LangSmith traces may contain full synthetic excerpts or metadata only.
-- The maximum walkthrough request deadline and RLM budgets.
+- Cloudflare model availability, daily allocation, and acceptable request budget; keep the
+  selected model IDs in settings and run the provider compatibility suite before verification.
+- The maximum request deadline and RLM budgets.
 
 The dependency-health report in `docs/research/dependency-health.md` records current
 maintenance, release, license, and compatibility evidence for the candidate stack.

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from orysys.application.conversations import Conversation
+from orysys.application.conversations import Conversation, ConversationSummary
 from orysys.domain.approval import ApprovalProposal, ApprovalTicket
 from orysys.domain.feedback import FeedbackItem
 from orysys.domain.memory import MemoryItem, MemoryKind
@@ -15,6 +15,12 @@ class CreateConversationResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     conversation: Conversation
+
+
+class ConversationListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversations: tuple[ConversationSummary, ...]
 
 
 class SendMessageRequest(BaseModel):

@@ -1,8 +1,10 @@
 import os
+from collections.abc import Sequence
 from typing import Any
 
 import streamlit as st
 
+from orysys.application.conversations import Conversation, ConversationSummary
 from orysys.config import Settings
 from orysys.domain.events import ActivityEvent, EventType
 from orysys.domain.evidence import Evidence
@@ -103,13 +105,36 @@ def _handle_conversation_error(error: Exception) -> None:
     st.error("The assistant is currently unavailable. Please try again.")
 
 
-def _messages() -> list[dict[str, str]]:
+def _messages() -> list[dict[str, Any]]:
     existing = st.session_state.get("messages")
     if isinstance(existing, list):
         return existing
-    messages: list[dict[str, str]] = []
+    messages: list[dict[str, Any]] = []
     st.session_state.messages = messages
     return messages
+
+
+def _conversation_summaries(client: OrysysApiClient) -> tuple[ConversationSummary, ...]:
+    """List server-owned threads. Fail closed so chat still works offline."""
+    try:
+        return client.list_conversations(limit=20)
+    except Exception:
+        return ()
+
+
+def _messages_for_conversation(conversation: Conversation) -> list[dict[str, Any]]:
+    return [{"role": item.role.value, "content": item.content} for item in conversation.messages]
+
+
+def _switch_conversation(client: OrysysApiClient, conversation_id: str) -> None:
+    try:
+        conversation = client.get_conversation(conversation_id)
+    except Exception:
+        st.error("That conversation could not be loaded.")
+        return
+    st.session_state.conversation_id = conversation.conversation_id
+    st.session_state.messages = _messages_for_conversation(conversation)
+    st.session_state.pop("active_run_id", None)
 
 
 def _logout() -> None:
@@ -168,6 +193,7 @@ def _apply_event(
     answer_parts: list[str],
     evidence: list[EvidenceCard],
     validations: list[ValidationItem],
+    claims: list[str],
 ) -> None:
     st.session_state.active_run_id = event.run_id
     activity: ActivityItem | None = activity_item(event)
@@ -181,12 +207,30 @@ def _apply_event(
         raw_evidence = event.public_payload.get("evidence", [])
         if isinstance(raw_evidence, list):
             evidence.extend(evidence_card(Evidence.model_validate(item)) for item in raw_evidence)
+        raw_answer = event.public_payload.get("answer", {})
+        if isinstance(raw_answer, dict):
+            raw_claims = raw_answer.get("claims", [])
+            if isinstance(raw_claims, list):
+                for raw_claim in raw_claims:
+                    if isinstance(raw_claim, dict):
+                        text = raw_claim.get("text")
+                        if isinstance(text, str) and text.strip() and text not in claims:
+                            claims.append(text)
     elif event.type is EventType.VALIDATION_COMPLETED:
         raw_results = event.public_payload.get("results", [])
         if isinstance(raw_results, list):
             validations.extend(
                 validation_item(ValidationResult.model_validate(item)) for item in raw_results
             )
+
+
+def _claims_to_show(content: str, claims: Sequence[object]) -> list[str]:
+    texts = [claim for claim in claims if isinstance(claim, str) and claim.strip()]
+    if not texts:
+        return []
+    if len(texts) == 1 and texts[0].strip() == content.strip():
+        return []
+    return texts
 
 
 api = _client()
@@ -219,13 +263,49 @@ with st.sidebar:
         args=(api,),
     )
 
+    summaries = _conversation_summaries(api)
+    if summaries:
+        st.caption("PREVIOUS CONVERSATIONS")
+        options = [item.conversation_id for item in summaries]
+        if conversation_id not in options:
+            options = [conversation_id, *options]
+            summaries = (
+                ConversationSummary(
+                    conversation_id=conversation_id,
+                    message_count=len(messages),
+                    preview=messages[-1]["content"][:200] if messages else "",
+                ),
+                *summaries,
+            )
+        labels = {
+            item.conversation_id: (
+                f"{item.preview[:40] + '…' if len(item.preview) > 40 else item.preview}"
+                f" ({item.message_count})"
+                if item.preview
+                else f"Thread {item.conversation_id.split('-', maxsplit=1)[0]}"
+                f" ({item.message_count})"
+            )
+            for item in summaries
+            if item.conversation_id in options
+        }
+        selected = st.selectbox(
+            "Conversations",
+            options,
+            index=options.index(conversation_id),
+            format_func=lambda value: labels.get(value, value),
+            label_visibility="collapsed",
+        )
+        if selected != conversation_id:
+            _switch_conversation(api, selected)
+            st.rerun()
+
     st.divider()
     st.caption("TOOLS")
     if ADMIN_ACTION in _allowed_tools(api):
         with st.expander("Administrator controls"):
             st.caption("Approval-gated simulated operations for assessment and testing.")
             action_target = st.text_input("Service", value="search-api")
-            action_reason = st.text_input("Reason", value="Assessment demonstration")
+            action_reason = st.text_input("Reason", value="Operational verification")
             if st.button("Request restart approval", width="stretch"):
                 try:
                     st.session_state.approval_ticket = api.propose_action(
@@ -264,6 +344,8 @@ with st.sidebar:
 for message in messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+        for claim in _claims_to_show(message["content"], message.get("claims", [])):
+            st.markdown(f"- {claim}")
         run_id = message.get("run_id")
         if message["role"] == "assistant" and run_id:
             selection = st.feedback("thumbs", key=f"feedback-{run_id}")
@@ -290,6 +372,7 @@ if prompt:
         evidence_items: list[EvidenceCard] = []
         validation_items: list[ValidationItem] = []
         answer_parts: list[str] = []
+        claim_texts: list[str] = []
         answer_text = ""
         try:
             placeholder = st.empty()
@@ -300,11 +383,14 @@ if prompt:
                     answer_parts=answer_parts,
                     evidence=evidence_items,
                     validations=validation_items,
+                    claims=claim_texts,
                 )
                 if answer_parts:
                     placeholder.markdown("".join(answer_parts) + "▌")
             answer_text = "".join(answer_parts)
             placeholder.markdown(answer_text)
+            for claim in _claims_to_show(answer_text, claim_texts):
+                st.markdown(f"- {claim}")
             activity.update(label="Completed", state="complete", expanded=False)
         except Exception:
             answer_text = "The assistant is currently unavailable. Please try again."
@@ -316,6 +402,7 @@ if prompt:
         {
             "role": "assistant",
             "content": answer_text,
+            "claims": claim_texts,
             "run_id": str(st.session_state.get("active_run_id", "")),
         }
     )

@@ -31,7 +31,7 @@ profile.
 Copy `.env.example` to `.env` only for local development. Never commit tokens,
 credentials, customer content, or production traces.
 
-For the complete credential-free container pilot:
+For the live-provider pilot (Cloudflare, Pinecone, Keycloak, LangSmith):
 
 ```bash
 make pilot
@@ -41,6 +41,12 @@ Open `http://127.0.0.1:8501`. The command builds the non-root runtime image, mig
 the local PostgreSQL database, and waits for PostgreSQL, Redis, MCP, API, and Streamlit
 health checks. See [`docs/operations.md`](docs/operations.md) for live-provider startup
 and troubleshooting.
+
+For a credential-free packaging check only (deterministic fake adapters):
+
+```bash
+make pilot-fake
+```
 
 ## Corpus ingestion
 
@@ -116,6 +122,9 @@ uv run streamlit run src/orysys/ui/app.py
 The API exposes:
 
 - `POST /v1/conversations` to create a server-owned conversation ID;
+- `GET /v1/conversations` to list owner-scoped threads newest-first with
+  `limit`/`offset` pagination (conversation ID, creation time, message count,
+  and last-message preview only; no message bodies);
 - `GET /v1/conversations/{id}` to load its visible history;
 - `POST /v1/conversations/{id}/messages` to stream ordered SSE activity and answer events.
 - `GET /v1/tools` and `POST /v1/tools/{name}/execute` for role-filtered, validated tools;
@@ -123,6 +132,13 @@ The API exposes:
 - `POST /v1/actions/proposals` and the decision endpoint for one-time, administrator-
   bound approval of a simulated restart;
 - `POST /v1/feedback` and the administrator review endpoint for trace-linked feedback.
+
+The Streamlit sidebar lists previous owner-scoped conversations via
+`GET /v1/conversations` (newest first, preview plus message count, no message
+bodies) and reloads full history through `GET /v1/conversations/{id}`. Listing
+fails closed to an empty history section so chat still works. Assistant messages
+render the summary plus per-claim bullets; a claim identical to the summary is
+hidden to avoid duplication.
 
 When `ORYSYS_USE_FAKE_ADAPTERS=false` and `DATABASE_URL` is configured, conversations,
 rolling summaries, long-term memories, audits, and LangGraph checkpoints use PostgreSQL
@@ -186,6 +202,16 @@ idempotency keys, output caps, and redacted activity events.
   cannot execute Python expressions, imports, files, subprocesses, or network requests.
 - `mcp.read` calls only the employee-directory, service-catalog, and incident-record
   operations exposed by the separate MCP server.
+
+Direct answers also run deterministic `enrich_with_mcp` enrichment
+(`src/orysys/graph/nodes.py`, `src/orysys/tools/mcp_enrichment.py`): exact
+allow-listed IDs (`E-100`, `E-200`, `payment-api`, `settlement-worker`,
+`PAY-2025-0214`, `PAY-2025-0603`) in the user message trigger at most 3
+`mcp.read` lookups, converted to `mcp:{operation}:{identifier}` evidence.
+Lookups require the verified `mcp.read` tool (analyst/administrator); viewers
+emit `tool.denied`. Missing records and client failures degrade to
+retrieval-only evidence with `tool.completed(found=False)`/`tool.failed`
+events.
 
 Run the official MCP v2 Streamable HTTP server separately:
 
@@ -272,20 +298,24 @@ Implemented in v1:
 - query-time dense and BM25 weighting with server-derived metadata filters;
 - evidence conversion, hosted reranking, and deterministic reranker fallback;
 - repeatable retrieval evaluation with recall, reciprocal-rank, and leakage metrics.
-- explicit direct-answer `StateGraph` with scoped retrieval and structured output;
+- explicit direct-answer `StateGraph` with scoped retrieval, deterministic MCP
+  enrichment, and structured output;
 - evidence-ledger citation checks, one repair attempt, and safe insufficient-evidence output;
 - redacted structured logging and manually scoped LangSmith traces.
 - lifecycle-managed FastAPI dependencies and a versioned SSE chat boundary;
-- process-local, owner-scoped conversation history with disconnect cancellation;
-- Streamlit chat, activity, validation, and evidence views using native components.
+- owner-scoped conversation history with `GET /v1/conversations` list metadata,
+  sidebar history picker, and disconnect cancellation;
+- Streamlit chat, activity, validation, evidence, and per-claim views using native components.
 - bounded plan/discover/partition/fan-out/reduce research with one gap retry;
 - deterministic recurring-cause aggregation with authorized citation validation;
 - Skycloak-hosted Keycloak realm provisioning and equivalent local realm export;
 - cached OIDC discovery/JWKS verification, bearer forwarding, and complete role policy;
 - token-derived conversation ownership and cross-tenant denial.
 - double-authorized knowledge, constrained analytics, and read-only MCP tools;
+- deterministic direct-answer MCP enrichment with role-gated degradation;
 - official MCP v2 in-process contract tests and Streamable HTTP server entrypoint;
-- PostgreSQL conversation history, rolling context summaries, and LangGraph checkpoints;
+- PostgreSQL conversation history with owner-scoped list previews, rolling context
+  summaries, and LangGraph checkpoints;
 - explicit memory proposal/confirmation/recall/expiry/deletion with audit events.
 - Redis/Upstash token-bucket rate limiting, outbound allow-lists, and adversarial controls;
 - restart-safe administrator approval with denial, expiry, replay, and identity checks;
@@ -308,9 +338,10 @@ Implemented in v1:
   real, but the assessment never restarts an external production service.
 - Feedback never changes prompts automatically. An administrator must review it before
   dataset export.
-- The credential-free Compose pilot proves packaging and service wiring with fake model
-  and retrieval adapters. Live-provider quality, latency, cost, and LangSmith evidence
-  require an authorized run with configured accounts.
+- The credential-free Compose pilot (`make pilot-fake`) proves packaging and service
+  wiring with fake model and retrieval adapters. Live-provider quality, latency, cost,
+  and LangSmith evidence require the default live run (`make pilot`) with configured
+  accounts.
 - Readiness currently proves process/configuration health. A future production rollout
   should add provider-specific degraded/readiness telemetry and deployment-level probes.
 

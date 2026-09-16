@@ -42,6 +42,24 @@ class AuthorizedToolGateway:
     ) -> ToolResult:
         requested = _event(context, EventType.TOOL_REQUESTED, request.tool_name)
         await self._telemetry.event(requested)
+        async with self._telemetry.span(
+            f"orysys.tool.{request.tool_name}",
+            {
+                "tool": request.tool_name,
+                "request_id": context.request_id,
+                "run_id": context.run_id,
+                "thread_id": context.thread_id,
+                "tenant_id": principal.tenant_id,
+            },
+        ):
+            return await self._execute_inner(request, principal, context)
+
+    async def _execute_inner(
+        self,
+        request: ToolRequest,
+        principal: Principal,
+        context: ToolRunContext,
+    ) -> ToolResult:
         handler = self._handlers.get(request.tool_name)
         if handler is None or request.tool_name not in derive_access_scope(principal).allowed_tools:
             await self._telemetry.event(

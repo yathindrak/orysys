@@ -3,7 +3,7 @@ from collections.abc import Iterator
 
 import httpx
 
-from orysys.application.conversations import Conversation
+from orysys.application.conversations import Conversation, ConversationSummary
 from orysys.domain.approval import ApprovalProposal, ApprovalTicket
 from orysys.domain.events import ActivityEvent
 from orysys.domain.feedback import FeedbackItem
@@ -35,6 +35,18 @@ class OrysysApiClient:
         response = self._client.get(f"/v1/conversations/{conversation_id}", headers=self._headers)
         response.raise_for_status()
         return Conversation.model_validate(response.json())
+
+    def list_conversations(
+        self, *, limit: int = 20, offset: int = 0
+    ) -> tuple[ConversationSummary, ...]:
+        response = self._client.get(
+            "/v1/conversations",
+            headers=self._headers,
+            params={"limit": limit, "offset": offset},
+        )
+        response.raise_for_status()
+        items = response.json().get("conversations", [])
+        return tuple(ConversationSummary.model_validate(item) for item in items)
 
     def stream_message(self, conversation_id: str, message: str) -> Iterator[ActivityEvent]:
         with self._client.stream(

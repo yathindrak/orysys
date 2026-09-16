@@ -23,7 +23,6 @@ def test_release_artifacts_exist_and_stale_claims_are_absent() -> None:
     required = (
         "docs/diagrams/system-context.mmd",
         "docs/diagrams/system-context.svg",
-        "docs/demo-script.md",
         "docs/release-audit.md",
         "docs/release-checklist.md",
         "evals/datasets/grounded-answers-v1.json",

@@ -18,7 +18,7 @@ from orysys.adapters.mcp_client import McpDirectoryClient
 from orysys.adapters.model_research import ModelResearchPlanner, ModelResearchWorker
 from orysys.adapters.pinecone.reranker import PineconeHostedReranker
 from orysys.adapters.pinecone.retrieval import PineconeKnowledgeIndex
-from orysys.adapters.telemetry import LangSmithTelemetry, NoopTelemetry
+from orysys.adapters.telemetry import LangSmithTelemetry, NoopTelemetry, ensure_langsmith_env
 from orysys.config import Settings
 from orysys.domain.errors import OrysysError
 from orysys.graph.runtime import DirectAssistantRuntime
@@ -95,6 +95,7 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
         reranker=PineconeHostedReranker(rerank_client),
     )
     telemetry: Telemetry = NoopTelemetry()
+    ensure_langsmith_env(settings)
     if settings.langsmith_api_key is not None:
         telemetry = LangSmithTelemetry(
             api_key=settings.langsmith_api_key.get_secret_value(),

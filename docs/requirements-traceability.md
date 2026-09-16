@@ -1,38 +1,38 @@
 # Orysys — Product Requirements & Acceptance Criteria
 
-This document is the acceptance checklist for Orysys — Enterprise Knowledge Assistant. A requirement is met only when spec, implementation, automated check, and walkthrough agree at the same commit.
+This document is the acceptance checklist for Orysys — Enterprise Knowledge Assistant. A requirement is met only when spec, implementation, automated check, and operator verification agree at the same commit.
 
 Status values used by the release audit:
 
 - **Planned:** design and work package are identified; no implementation claim.
 - **Implemented:** code exists and local tests pass.
-- **Verified:** code, automated evidence, documentation, and walkthrough evidence agree.
+- **Verified:** code, automated evidence, documentation, and operator evidence agree.
 
 This matrix defines what evidence each requirement needs; it does not itself claim that
 the evidence was captured. The current grouped status, exceptions, and evidence links
 are maintained in [`release-audit.md`](release-audit.md). A row is **Verified** only
-after its automated and walkthrough evidence are both recorded for the same commit.
+after its automated and operator evidence are both recorded for the same commit.
 
 ## 1. Objective and user experience
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
-| OBJ-01 | Enterprise knowledge assistant, not a thin LLM wrapper | Modular monolith, typed domain, explicit graph, provider adapters, security and evaluation | Architecture/import tests and end-to-end scenarios | Architecture-to-request walkthrough |
+| OBJ-01 | Enterprise knowledge assistant, not a thin LLM wrapper | Modular monolith, typed domain, explicit graph, provider adapters, security and evaluation | Architecture/import tests and end-to-end scenarios | Architecture-to-request verification |
 | OBJ-02 | Search organizational documents | `KnowledgeIndex` over synthetic bank corpus | Retrieval evaluation and filter tests | Search policy/runbook/incident examples |
 | OBJ-03 | Answer questions with supporting evidence | Evidence ledger and claim-to-evidence validator | Citation validity and insufficient-evidence tests | Expand evidence cards for final answer |
 | OBJ-04 | Explain what the system is doing | Typed public activity events plus LangSmith spans | Event ordering/redaction contract tests | Live activity panel and matching trace |
 | OBJ-05 | Maintain conversation context | Postgres LangGraph checkpoints and bounded rolling summary | Multi-turn and restart tests | Follow-up without repeating context |
 | OBJ-06 | Invoke external tools | Authorized knowledge, analytics and MCP tools | Role/tool matrix and protocol tests | Analyst invokes MCP and analytics |
 | OBJ-07 | Multiple roles with controlled information/tool access | Keycloak roles plus server-derived `AccessScope` | Positive/negative RBAC and leakage suite | Viewer denial, analyst success, admin approval |
-| OBJ-08 | Readable surrounding logic | Deep modules, small interfaces, typed state/events/errors, ADRs | Ruff, mypy, architecture dependency checks | Repository module walkthrough |
-| OBJ-09 | Maintain meaningful Git history | Focused work-package commits | CI at each commit where practical | Public history walkthrough |
+| OBJ-08 | Readable surrounding logic | Deep modules, small interfaces, typed state/events/errors, ADRs | Ruff, mypy, architecture dependency checks | Repository module review |
+| OBJ-09 | Maintain meaningful Git history | Focused work-package commits | CI at each commit where practical | Public history review |
 
 ## 2. Frontend
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | UI-01 | Use Streamlit | Thin Streamlit process | Compose smoke test | Open running application |
-| UI-02 | Multi-turn chat | Server-owned conversation/thread ID and checkpoint reload | UI/API multi-turn integration test | Two related questions |
+| UI-02 | Multi-turn chat | Server-owned conversation/thread ID, checkpoint reload, owner-scoped `GET /v1/conversations` list plus sidebar history picker | UI/API multi-turn and list integration tests | Two related questions plus previous-thread reload |
 | UI-03 | Streaming responses | FastAPI SSE `answer.delta`, rendered with native Streamlit streaming | SSE framing/order/disconnect tests | Visible token stream |
 | UI-04 | Current agent state | `agent.*` and `node.*` events | Event schema tests | Activity timeline |
 | UI-05 | Active LangGraph node | Node name/status in public events | Graph-to-event mapping tests | Live node transitions |
@@ -40,12 +40,12 @@ after its automated and walkthrough evidence are both recorded for the same comm
 | UI-07 | Retrieval status | Query type, filter summary, counts, latency and degradation events | Retrieval event tests | Dense/sparse/hybrid status |
 | UI-08 | Memory updates | Recall/propose/save/delete events | Memory event tests | Checkpoint and durable-memory actions |
 | UI-09 | Validation results | Citation/auth/safety/brand checks in activity panel | Validator/event tests | Passed and blocked examples |
-| UI-10 | Final generation | Generation state and answer deltas | Stream integration tests | Final-response phase |
+| UI-10 | Final generation | Generation state, answer deltas, plus per-claim bullet rendering | Stream integration and UI claim tests | Final-response phase with claim bullets |
 | UI-11 | Functional transparency over visual complexity | Native Streamlit plus small project-owned design system | Smoke/accessibility checks | Clear chat/activity/evidence layout |
 
 ## 3. Backend and async engineering
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | BE-01 | Python | Python 3.13 project managed by uv | CI interpreter and lock checks | Repository configuration |
 | BE-02 | FastAPI | Versioned routes and lifecycle composition root | API contract tests | API docs/requests |
@@ -57,7 +57,7 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 4. LangGraph and specialized agents
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | LG-01 | LangGraph orchestration | Explicit compiled `StateGraph` | Graph topology snapshot/test | Graph diagram and live transitions |
 | LG-02 | Supervisor agent | Typed intent, plan, budget and route | Structured-output and routing tests | Supervisor selects path |
@@ -70,7 +70,7 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 5. Recursive Language Model behavior
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | RLM-01 | Explore document collections | Metadata-aware discovery stage | Discovery coverage tests | Candidate collection counts |
 | RLM-02 | Generate Python-based search plans | Model emits validated plan DSL; trusted Python executes it | Plan schema/rejection tests | Rendered plan summary |
@@ -79,11 +79,11 @@ after its automated and walkthrough evidence are both recorded for the same comm
 | RLM-05 | Call sub-agents recursively | Bounded worker subgraph and one gap-driven level | Depth/child/call budget tests | One targeted recursive follow-up |
 | RLM-06 | Aggregate results | Typed deterministic reducer with evidence dedupe | Aggregation/golden tests | Recurring root-cause summary |
 | RLM-07 | Avoid loading entire corpus/context | IDs, compact evidence and findings in graph state | State-size/context budget tests | Trace shows bounded inputs |
-| RLM-08 | Demonstrate annual outage scenario | Payment incidents filtered by date/topic, analyzed in batches | Golden end-to-end eval | Full scenario walkthrough |
+| RLM-08 | Demonstrate annual outage scenario | Payment incidents filtered by date/topic, analyzed in batches | Golden end-to-end eval | Full scenario verification |
 
 ## 6. Retrieval and Pinecone
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | RAG-01 | Dense embeddings | Cloudflare Qwen3 embedding adapter, 1,024 dimensions and L2 normalization | Semantic retrieval cases and dimension assertion | Paraphrased question |
 | RAG-02 | Sparse keyword/BM25 | Corpus-fitted `pinecone-text` BM25 encoder | Exact-code retrieval cases | Exact incident/error query |
@@ -98,43 +98,43 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 7. Memory
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | MEM-01 | Preserve user context | Trusted principal plus scoped checkpoint state | Identity/context tests | Role/context maintained |
-| MEM-02 | Preserve previous questions | Postgres checkpointer keyed by thread ID | Multi-turn persistence tests | Follow-up turn |
+| MEM-02 | Preserve previous questions | Postgres checkpointer keyed by thread ID plus Postgres/InMemory owner-scoped conversation list with preview/count pagination | Multi-turn persistence and list tests | Follow-up turn plus history picker |
 | MEM-03 | Relevant historical interactions | Recent-window plus validated rolling summary | Context selection tests | Long conversation summary |
 | MEM-04 | Survive multiple session turns | Durable checkpoint and process restart | Restart integration test | Restart then follow-up |
-| MEM-05 | Explain memory design | Architecture/implementation/ADR documentation | Documentation link audit | Walkthrough memory explanation |
+| MEM-05 | Explain memory design | Architecture/implementation/ADR documentation | Documentation link audit | Operator memory explanation |
 | MEM-06 | Long-term memory | Explicit propose/confirm/recall/expire/delete lifecycle | Consent/isolation/TTL/deletion tests | Cross-thread preference and deletion |
 | MEM-07 | Keep memory types separate | LangGraph tables versus app-owned memory table | Repository/schema tests | Diagram and data-flow explanation |
 
 ## 8. Tools and MCP
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | TOOL-01 | Knowledge search tool | Scoped `KnowledgeIndex` tool | Tool/authorization tests | Agent-triggered document search |
 | TOOL-02 | Simple MCP server | Separate official-SDK server with dummy data | MCP handshake/schema/timeout tests | Service catalog or incident lookup |
-| TOOL-03 | Agent invokes MCP when needed | Tool selection plus `ToolGateway` | Routing and fake-model tests | Natural-language MCP request |
+| TOOL-03 | Agent invokes MCP when needed | Deterministic `enrich_with_mcp` allow-list lookup plus `ToolGateway` selection | Enrichment, routing, and fake-model tests | Natural-language MCP request with `mcp:*` evidence |
 | TOOL-04 | Python analysis tool | Named safe aggregations over validated records | Unit/property/invalid-input tests | Root-cause frequency analysis |
 | TOOL-05 | Prevent unsafe execution | No eval/exec/shell/import/filesystem/network | Adversarial parameter tests | Rejected arbitrary-code attempt |
 | TOOL-06 | Tool timeouts and output limits | Gateway deadlines, caps and typed failures | Timeout/oversize tests | Controlled MCP timeout |
 
 ## 9. Model and observability
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | LLM-01 | Use a modern LLM | Cloudflare Qwen3 generation model behind typed adapter (default vendor); GLM alternate and generic OpenAI-protocol fallback remain configurable, off by default | Provider contract and structured-output tests | Configured model shown safely |
 | LLM-02 | Document selection rationale | ADR/research report with quality/cost roles | Documentation link audit | Trade-off explanation |
 | OBS-01 | LangSmith mandatory | Tracing enabled around complete runtime | Trace-presence integration test | Open conversation trace |
 | OBS-02 | Trace every conversation | Root run for every accepted request | Run/trace correlation test | UI run ID matches trace |
-| OBS-03 | Trace tool calls | Nested tool spans with redacted inputs/outcomes | Recording-adapter tests | MCP/analytics spans |
+| OBS-03 | Trace tool calls | Nested tool spans with redacted inputs/outcomes | Test-adapter tests | MCP/analytics spans |
 | OBS-04 | Trace agent transitions | Named agent/node spans | Transition-span tests | Supervisor/research/response tree |
 | OBS-05 | Trace retrieval | Dense/sparse/hybrid/filter/rerank metadata spans | Retrieval-span tests | Retrieval trace details |
 | OBS-06 | Protect traced data | Shared redaction and metadata-only policy | Canary secret/document leakage tests | Safe trace inspection |
 
 ## 10. Security, validation, and brand
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | SEC-01 | Instruction override protection | Fixed hierarchy, delimited evidence, deterministic controls | User/retrieved injection suite | Retrieved injection ignored |
 | SEC-02 | Data exfiltration protection | Scope enforcement, egress allow-list, redaction, excerpt limits | Cross-tenant/secret leakage tests | Unauthorized source request denied |
@@ -150,7 +150,7 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 11. Authentication, RBAC, and rate limiting
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | AUTH-01 | Implement an allowed auth option | Upstream Keycloak hosted by Skycloak; local equivalent profile | OIDC/JWKS and local realm smoke tests | Login and issuer explanation |
 | AUTH-02 | Viewer role | Chat/search only | Positive/negative capability tests | Viewer search and tool denial |
@@ -164,7 +164,7 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 12. Required failure handling
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | ERR-01 | LLM failures | Classified timeout/rate/provider/parse failures and bounded retry | Failure-injection tests | Controlled model failure |
 | ERR-02 | Vector DB failures | Typed unavailable/degraded paths; never fabricate | Pinecone adapter failures | Controlled retrieval outage |
@@ -175,18 +175,18 @@ after its automated and walkthrough evidence are both recorded for the same comm
 
 ## 13. Sample data
 
-| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | DATA-01 | Incident reports | Synthetic payment/non-payment incidents across dates/severity | Fixture/schema tests | Annual outage query |
 | DATA-02 | Architecture documents | Synthetic service architecture docs | Fixture/schema tests | Architecture question |
 | DATA-03 | Operational runbooks | Synthetic remediation/runbook docs | Fixture/schema tests | Runbook answer |
 | DATA-04 | Product specifications | Synthetic product docs | Fixture/schema tests | Product question |
 | DATA-05 | Policies and meeting notes | Additional scenario corpus | Fixture/schema tests | Policy/follow-up question |
-| DATA-06 | Security/evaluation fixtures | Restricted docs, injection text, exact codes and paraphrases | Expected-case tests | Security and hybrid walkthroughs |
+| DATA-06 | Security/evaluation fixtures | Restricted docs, injection text, exact codes and paraphrases | Expected-case tests | Security and hybrid checks |
 
 ## 14. v1.1 extensions (staged)
 
-| ID | v1.1 extension | Implementation | Automated evidence | Required walkthrough evidence |
+| ID | v1.1 extension | Implementation | Automated evidence | Required operator evidence |
 |---|---|---|---|---|
 | EXT-01 | Multi-agent collaboration and failure cascade handling | Typed shared state, isolated workers, bounded budgets, deterministic reducer, partial failures | Worker failure/deadline/circuit tests | One batch fails while siblings complete |
 | EXT-02 | Human-in-the-loop approval | LangGraph interrupt and secure restart-safe resume | approve/deny/expire/replay/restart tests | Admin action pause and resume |
@@ -216,10 +216,9 @@ after its automated and walkthrough evidence are both recorded for the same comm
 |---|---|---|---|
 | DEL-01 | Public source repository | GitHub repository at final reviewed commit | Anonymous clone/setup succeeds; secret scan clean |
 | DEL-02 | Architecture diagram | Mermaid source plus rendered PNG/SVG in `docs/diagrams/` | Matches implemented modules and deployment |
-| DEL-03 | Guided walkthrough recording | Timed script, recording and public URL | All core/extension evidence visible within 45 minutes |
-| DEL-04 | LangSmith traces in walkthrough | Curated trace URLs/IDs from final commit/config | Accessible, redacted and correlated to walkthrough runs |
-| DEL-05 | Assumptions and trade-offs | README/ADR section plus walkthrough segment | Explicit choices, rejected options and limitations |
-| DEL-06 | Reproducible deployment | Docker Compose and setup/troubleshooting docs | Fresh-machine smoke test passes |
+| DEL-03 | Curated verification traces | Trace IDs from final commit/config, redacted and correlated to verification runs | Accessible, redacted and correlated to verification runs |
+| DEL-04 | Assumptions and trade-offs | README/ADR section plus verification notes | Explicit choices, rejected options and limitations |
+| DEL-05 | Reproducible deployment | Docker Compose and setup/troubleshooting docs | Fresh-machine smoke test passes |
 
 ## 17. Release audit rule
 
@@ -227,11 +226,11 @@ Before release:
 
 1. Change a requirement's release-audit status only when implementation exists.
 2. Link every row to its code location and exact test name.
-3. Attach a trace ID, screenshot, result file, or walkthrough timestamp where claimed.
+3. Attach a trace ID, screenshot, result file, or verification timestamp where claimed.
 4. Remove or label features that did not meet their acceptance criteria.
 5. Reconcile the architecture diagram and README against the final code.
 6. Run public-repository secret, personal-data, license, dependency, and dead-link checks.
-7. Tag the exact demonstrated commit and record dependency/model/corpus/prompt versions.
+7. Tag the exact verified commit and record dependency/model/corpus/prompt versions.
 
 The release should prefer an honest, measured limitation over an unverified feature claim.
 
@@ -250,4 +249,4 @@ This table links the originating brief areas to the requirement groups in this d
 | Async | BE-01–BE-07, ERR-01–ERR-06 |
 | RBAC | AUTH-01–AUTH-05, OBJ-07, SEC-07 |
 | Quality | OBJ-01, OBJ-08, OBJ-09, BE-06–BE-07, ERR-01–ERR-06, UI-01–UI-11 |
-| Docs | MEM-05, LLM-02, SEC-11, DEL-02, DEL-05, DEL-06 |
+| Docs | MEM-05, LLM-02, SEC-11, DEL-02, DEL-04, DEL-05 |

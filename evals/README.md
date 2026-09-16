@@ -61,4 +61,4 @@ uv run python -m orysys.evals.reliability
 The report records p50, p95, and maximum API latency, request failures, provider-call
 count, and estimated provider cost. The default profile deliberately uses deterministic
 fake adapters, so provider calls and estimated cost are zero; live provider latency and
-cost must be captured separately during an authorized walkthrough.
+cost must be captured separately during an authorized live run.

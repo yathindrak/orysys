@@ -30,10 +30,39 @@ class Conversation(BaseModel):
     summarized_message_count: int = Field(default=0, ge=0)
 
 
+class ConversationSummary(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    conversation_id: str = Field(min_length=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    message_count: int = Field(default=0, ge=0)
+    preview: str = Field(default="", max_length=200)
+
+
+def _summary(conversation: Conversation) -> ConversationSummary:
+    preview = ""
+    if conversation.messages:
+        preview = conversation.messages[-1].content.strip().replace("\n", " ")[:200]
+    return ConversationSummary(
+        conversation_id=conversation.conversation_id,
+        created_at=conversation.created_at,
+        message_count=len(conversation.messages),
+        preview=preview,
+    )
+
+
 class ConversationStore(Protocol):
     async def create(self, principal: Principal) -> Conversation: ...
 
     async def get(self, conversation_id: str, principal: Principal) -> Conversation: ...
+
+    async def list(
+        self,
+        principal: Principal,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[ConversationSummary, ...]: ...
 
     async def append(
         self,
@@ -83,6 +112,18 @@ class InMemoryConversationStore:
             updated = _with_rolling_summary(updated)
             self._items[conversation_id] = updated
             return updated
+
+    async def list(
+        self,
+        principal: Principal,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[ConversationSummary, ...]:
+        async with self._lock:
+            owned = [item for item in self._items.values() if _owned_by(item, principal)]
+        owned.sort(key=lambda item: item.created_at, reverse=True)
+        return tuple(_summary(item) for item in owned[offset : offset + limit])
 
 
 def conversation_context(conversation: Conversation) -> tuple[ConversationMessage, ...]:

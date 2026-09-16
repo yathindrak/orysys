@@ -37,6 +37,7 @@ async def _run(args: argparse.Namespace) -> None:
     )
     async with live_assistant_runtime(settings) as runtime:
         result = await runtime.run(request, principal)
+        await asyncio.to_thread(runtime.flush)
     payload = {
         "run_id": result.run_id,
         "answer": result.answer.model_dump(mode="json"),

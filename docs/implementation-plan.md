@@ -12,7 +12,7 @@ authenticated input through graph routing, retrieval, tools, validation, persist
 feedback, and final output in both the Streamlit activity panel and LangSmith.
 
 The work is complete only when code, tests, traces, documentation, Docker Compose, and
-the guided walkthrough tell the same architectural story.
+operator verification tell the same architectural story.
 
 ## 2. Scope guardrails
 
@@ -33,7 +33,7 @@ the guided walkthrough tell the same architectural story.
 - LangSmith tracing and offline/online evaluation.
 - Prompt-injection, exfiltration, tool-abuse, citation, input, and output controls.
 - Failure injection and graceful degradation for all named provider failures.
-- Docker Compose, CI, architecture documentation, trace evidence, and walkthrough materials.
+- Docker Compose, CI, architecture documentation, trace evidence, and verification notes.
 
 ### Do not build
 
@@ -195,7 +195,7 @@ interfaces above, never concrete SDK clients.
 │   ├── implementation-plan.md
 │   ├── requirements-traceability.md
 │   ├── threat-model.md
-│   └── demo-script.md
+│   └── operations.md
 └── .github/workflows/
 ```
 
@@ -393,7 +393,7 @@ ResearchPlan
 
 Execution stages are discover, filter, partition, child analysis, reduce, explicit gap
 check, one optional targeted recursion, compose, and validate. Defaults remain small
-enough for a predictable walkthrough. The annual payment-outage example must prove date/topic
+enough for predictable verification runs. The annual payment-outage example must prove date/topic
 filtering, batching, parallel child analysis, partial-failure behavior, recurring-cause
 aggregation, and evidence-backed output.
 
@@ -630,7 +630,7 @@ Feature flags are limited to genuine environment differences:
 - local Keycloak versus Skycloak issuer;
 - optional Deep Agents research spike;
 - in-memory rate limiting in explicit development mode only;
-- trace body policy for synthetic walkthrough data.
+- trace body policy for synthetic verification data.
 
 Compose containers use pinned images, non-root users where supported, health checks,
 read-only mounts where practical, named volumes, restart behavior, and no embedded
@@ -796,17 +796,17 @@ Depends on: WP-05, WP-08, WP-09, WP-10
 
 Exit: a fresh machine can run the documented local pilot path with fixture/fake credentials.
 
-### WP-15 Release and walkthrough
+### WP-15 Release and verification
 
 Depends on: all previous packages
 
 - Finalize public README, architecture diagram, setup, assumptions, trade-offs, security,
   evaluation results, trace links/screenshots, and troubleshooting.
-- Prepare and rehearse a timed guided walkthrough showing v1-scope evidence.
+- Prepare operator verification notes showing v1-scope evidence.
 - Audit the public repository for secrets, personal data, dead code, stale flags, and
   unreferenced claims before publication.
 
-Exit: every row in `requirements-traceability.md` has implementation, test, and walkthrough evidence.
+Exit: every row in `requirements-traceability.md` has implementation, test, and verification evidence.
 
 ## 19. Suggested commit history
 
@@ -833,26 +833,25 @@ Use small, reviewable commits that preserve the product build story:
 Never manufacture commit history after implementation. Each commit must build or have a
 clearly documented temporary reason when a cross-commit change is unavoidable.
 
-## 20. Guided walkthrough plan (45 min)
+## 20. Operator verification plan
 
-Walk a pilot customer through the v1 story in 45 minutes, using live product behavior
-and trace evidence:
+Verify the v1 story against live product behavior and trace evidence, in order:
 
-| Time | Evidence |
+| # | Evidence |
 |---:|---|
-| 0-4 min | Problem, architecture diagram, assumptions, and deliberate trade-offs |
-| 4-9 min | Repository modules, deep interfaces, graph state, async/event design |
-| 9-15 min | Viewer direct RAG, streaming UI, hybrid evidence, attribution, LangSmith trace |
-| 15-23 min | Annual outage RLM: discovery, batching, parallel agents, aggregation, partial failure |
-| 23-28 min | Multi-turn checkpoints, process restart, confirmed cross-thread memory, deletion |
-| 28-34 min | Viewer denial, analyst tools, MCP call, Python analysis, metadata isolation |
-| 34-38 min | Admin action pause, approval/denial, resume and audit evidence |
-| 38-41 min | Prompt injection, exfiltration, hallucinated citation, rate limiting, provider failure |
-| 41-43 min | Feedback entry and LangSmith evaluation dataset/results |
-| 43-45 min | Docker Compose, known limitations, production next steps, recap |
+| 1 | Problem, architecture diagram, assumptions, and deliberate trade-offs |
+| 2 | Repository modules, deep interfaces, graph state, async/event design |
+| 3 | Viewer direct RAG, streaming UI, hybrid evidence, attribution, LangSmith trace |
+| 4 | Annual outage RLM: discovery, batching, parallel agents, aggregation, partial failure |
+| 5 | Multi-turn checkpoints, process restart, confirmed cross-thread memory, deletion |
+| 6 | Viewer denial, analyst tools, MCP call, Python analysis, metadata isolation |
+| 7 | Admin action pause, approval/denial, resume and audit evidence |
+| 8 | Prompt injection, exfiltration, hallucinated citation, rate limiting, provider failure |
+| 9 | Feedback entry and LangSmith evaluation dataset/results |
+| 10 | Docker Compose, known limitations, production next steps, recap |
 
-Keep a prerecorded fallback for hosted-provider outages, but demonstrate the live path
-when available. The fallback must show real prior traces/results from the same commit.
+For hosted-provider outages, fall back to prior real traces/results captured from the
+same commit.
 
 ## 21. Definition of done
 
@@ -871,7 +870,7 @@ when available. The fallback must show real prior traces/results from the same c
 - Feedback is run/trace-linked and exportable through a reviewed evaluation flow.
 - Docker Compose starts the documented local stack and health checks pass.
 - The architecture diagram, README, assumptions/trade-offs, evaluation report, and
-  guided walkthrough are complete and consistent with the implemented commit.
+  operator verification notes are complete and consistent with the implemented commit.
 
 ## 22. Risks and decision checkpoints
 
@@ -880,14 +879,14 @@ when available. The fallback must show real prior traces/results from the same c
 | Scope exceeds release timeline | Implement work packages in value/risk order; keep v1 scope bounded | Re-estimate after WP-05 and WP-10 |
 | Deep Agents hides behavior or churns | Explicit LangGraph remains authoritative; contain spike behind worker interface | Decide during WP-06 |
 | Pinecone sparse/rerank behavior differs by account | Early live compatibility test plus fake adapter and measured fallback | Before WP-03 exit |
-| Cloudflare free allocation/model access changes | Provider contract tests, per-run budgets, safe quota failure, and configurable fallback | Before WP-04 exit and walkthrough rehearsal |
+| Cloudflare free allocation/model access changes | Provider contract tests, per-run budgets, safe quota failure, and configurable fallback | Before WP-04 exit and verification |
 | Neon pooler incompatibility | Use direct endpoint for checkpointer; local Postgres for tests | Before WP-09 |
 | Skycloak operator-access ambiguity | Describe as hosted upstream Keycloak; include realm export and local profile | Before WP-07 exit |
 | Streamlit OIDC/token behavior blocks API flow | Prove token handoff in an early auth spike | Start of WP-07 |
 | Telemetry leaks sensitive content | One redaction module and adversarial trace/log tests | WP-04 and WP-10 gates |
 | Long-term memory creates privacy risk | Explicit consent, narrow data classes, TTL, provenance, delete, isolation | WP-09 design review |
 | Feedback becomes false ground truth | Store raw signal; require review before dataset export | WP-12 design review |
-| Hosted services fail during walkthrough | Checkpointed state, graceful errors, fixtures, recorded fallback evidence | Walkthrough rehearsal |
+| Hosted services fail during verification | Checkpointed state, graceful errors, fixtures, recorded fallback evidence | Verification run |
 
 Open tuning choices - model, index dimension, chunk sizes, alpha, candidate count,
 reranker, recursion budgets, timeouts, rate thresholds, memory TTL, and evaluation
@@ -897,6 +896,6 @@ guesswork.
 ## Appendix A. Brief coverage note
 
 The work packages above cover the originating solution brief end to end, from
-foundation and retrieval through operations, release, and the guided walkthrough.
-ID-level mapping between brief items, implementation, tests, and walkthrough evidence
+foundation and retrieval through operations and release.
+ID-level mapping between brief items, implementation, tests, and verification evidence
 lives in requirements-traceability.md.

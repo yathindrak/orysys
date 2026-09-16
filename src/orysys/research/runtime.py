@@ -1,7 +1,7 @@
 import asyncio
 import operator
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any, TypedDict, cast
 from uuid import uuid4
@@ -21,7 +21,7 @@ from orysys.domain.validation import ValidationResult, validate_answer_citations
 from orysys.graph.runtime import (
     AssistantRunResult,
     DirectAssistantRuntime,
-    _checkpoint_config,
+    _langsmith_config,
 )
 from orysys.ports.research import ResearchPlanner, ResearchWorker
 from orysys.ports.retrieval import KnowledgeIndex, SearchOptions
@@ -354,15 +354,25 @@ def route_after_reduce(state: ResearchState) -> str:
     return "compose"
 
 
-def build_research_graph(nodes: ResearchNodes, *, checkpointer: Any | None = None) -> Any:
+def build_research_graph(
+    nodes: ResearchNodes,
+    telemetry: Telemetry | None = None,
+    *,
+    checkpointer: Any | None = None,
+) -> Any:
     builder = StateGraph(ResearchState)
-    builder.add_node("plan", nodes.plan)
-    builder.add_node("discover", nodes.discover)
-    builder.add_node("partition", nodes.partition)
-    builder.add_node("worker", cast(Any, nodes.worker), input_schema=WorkerInput)
-    builder.add_node("reduce", nodes.reduce)
-    builder.add_node("retry_gaps", nodes.retry_gaps)
-    builder.add_node("compose", nodes.compose)
+    active = telemetry or NoopTelemetry()
+    builder.add_node("plan", _traced("research_plan", nodes.plan, active))
+    builder.add_node("discover", _traced("research_discover", nodes.discover, active))
+    builder.add_node("partition", _traced("research_partition", nodes.partition, active))
+    builder.add_node(
+        "worker",
+        cast(Any, _traced("research_worker", nodes.worker, active)),
+        input_schema=WorkerInput,
+    )
+    builder.add_node("reduce", _traced("research_reduce", nodes.reduce, active))
+    builder.add_node("retry_gaps", _traced("research_retry_gaps", nodes.retry_gaps, active))
+    builder.add_node("compose", _traced("research_compose", nodes.compose, active))
     builder.add_edge(START, "plan")
     builder.add_edge("plan", "discover")
     builder.add_edge("discover", "partition")
@@ -397,6 +407,7 @@ class ResearchAssistantRuntime:
                 knowledge_index=knowledge_index,
                 max_concurrency=max_concurrency,
             ),
+            telemetry or NoopTelemetry(),
             checkpointer=checkpointer,
         )
         self._telemetry = telemetry or NoopTelemetry()
@@ -421,7 +432,7 @@ class ResearchAssistantRuntime:
                 raw: dict[str, Any] = await self._graph.ainvoke(
                     initial,
                     {
-                        **_checkpoint_config(request, principal),
+                        **_langsmith_config(request, principal, run_id, route="research"),
                         "max_concurrency": self._max_concurrency,
                     },
                 )
@@ -441,6 +452,11 @@ class ResearchAssistantRuntime:
         for event in result.events:
             await self._telemetry.event(event)
             yield event
+
+    def flush(self) -> None:
+        flush = getattr(self._telemetry, "flush", None)
+        if callable(flush):
+            flush()
 
 
 class RoutingAssistantRuntime:
@@ -466,6 +482,10 @@ class RoutingAssistantRuntime:
             self._research if is_research_request(request.message) else self._direct
         )
         return runtime.stream(request, principal)
+
+    def flush(self) -> None:
+        self._direct.flush()
+        self._research.flush()
 
 
 def is_research_request(message: str) -> bool:
@@ -548,3 +568,23 @@ def _normalize_finding_key(key: str) -> str:
     if any(term in normalized for term in ("poison", "malformed", "dead_letter")):
         return "poison_record_processing"
     return normalized[:120]
+
+
+def _traced(
+    name: str,
+    node: Callable[..., Awaitable[Any]],
+    telemetry: Telemetry,
+) -> Any:
+    async def wrapped(state: Any) -> Any:
+        attributes: dict[str, object] = {"node": name}
+        request = state.get("request") if isinstance(state, dict) else None
+        run_id = state.get("run_id") if isinstance(state, dict) else None
+        if request is not None:
+            attributes["request_id"] = request.request_id
+            attributes["thread_id"] = request.thread_id
+        if isinstance(run_id, str):
+            attributes["run_id"] = run_id
+        async with telemetry.span(f"orysys.graph.{name}", attributes):
+            return await node(state)
+
+    return cast(Any, wrapped)

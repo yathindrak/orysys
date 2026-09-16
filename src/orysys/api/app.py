@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -22,6 +22,7 @@ from orysys.adapters.rate_limit import InMemoryRateLimiter, RedisRateLimiter, Up
 from orysys.api.schemas import (
     ApprovalResponse,
     ApprovalTicketResponse,
+    ConversationListResponse,
     CreateConversationResponse,
     DecideActionRequest,
     ErrorResponse,
@@ -255,6 +256,15 @@ def create_app(
     ) -> CreateConversationResponse:
         conversation = await store.create(request_principal)
         return CreateConversationResponse(conversation=conversation)
+
+    @app.get("/v1/conversations", response_model=ConversationListResponse)
+    async def list_conversations(
+        request_principal: Annotated[Principal, Depends(current_principal)],
+        limit: Annotated[int, Query(ge=1, le=50)] = 20,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> ConversationListResponse:
+        conversations = await store.list(request_principal, limit=limit, offset=offset)
+        return ConversationListResponse(conversations=conversations)
 
     @app.get("/v1/conversations/{conversation_id}", response_model=Conversation)
     async def get_conversation(
