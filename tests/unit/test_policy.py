@@ -1,5 +1,13 @@
+import pytest
+
 from orysys.domain.identity import Principal, Role
-from orysys.domain.policy import ADMIN_ACTION, ANALYTICS, KNOWLEDGE_SEARCH, derive_access_scope
+from orysys.domain.policy import (
+    ADMIN_ACTION,
+    ANALYTICS,
+    KNOWLEDGE_SEARCH,
+    MCP_READ,
+    derive_access_scope,
+)
 
 
 def test_viewer_scope_is_derived_from_verified_principal() -> None:
@@ -41,3 +49,25 @@ def test_administrator_receives_all_declared_tools() -> None:
     scope = derive_access_scope(principal)
 
     assert {KNOWLEDGE_SEARCH, ANALYTICS, ADMIN_ACTION} <= scope.allowed_tools
+
+
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [
+        (Role.VIEWER, {KNOWLEDGE_SEARCH}),
+        (Role.ANALYST, {KNOWLEDGE_SEARCH, ANALYTICS, MCP_READ}),
+        (
+            Role.ADMINISTRATOR,
+            {KNOWLEDGE_SEARCH, ANALYTICS, MCP_READ, ADMIN_ACTION},
+        ),
+    ],
+)
+def test_role_tool_matrix_is_complete(role: Role, expected: set[str]) -> None:
+    principal = Principal(
+        subject=f"{role.value}-1",
+        tenant_id="bank-a",
+        roles=frozenset({role}),
+        clearance=10,
+    )
+
+    assert derive_access_scope(principal).allowed_tools == expected

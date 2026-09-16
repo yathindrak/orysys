@@ -4,12 +4,10 @@ Orysys is an access-scoped enterprise knowledge assistant. It is designed to
 produce evidence-backed answers, expose safe execution activity, and keep model
 decisions inside deterministic authorization and validation controls.
 
-The repository currently includes the product baseline and document-ingestion
-pipeline: domain contracts, provider ports, deterministic test adapters,
-configuration, FastAPI health boundaries, a synthetic bank corpus, Cloudflare
-embeddings, corpus-fitted BM25 encoding, idempotent Pinecone writes, scoped hybrid
-retrieval, hosted reranking, and the first grounded LangGraph answer path. FastAPI
-streaming and Streamlit follow in later work packages.
+The repository includes the product baseline, ingestion and hybrid retrieval,
+grounded direct and recursive-research LangGraph paths, a streaming FastAPI boundary,
+a Streamlit client, and portable Keycloak OIDC authentication with server-derived
+RBAC.
 
 ## Requirements
 
@@ -80,6 +78,20 @@ uv run python -m orysys.graph.cli "What caused PAY-DB-042?"
 The command prints the validated answer, evidence metadata, validation results, and
 ordered public event types. It does not print retrieved excerpts or credentials.
 
+Questions that ask for annual, comparative, recurring, or cross-document analysis are
+routed to the bounded research graph. For example:
+
+```bash
+uv run python -m orysys.graph.cli \
+  "Across all payment incidents in 2025, what recurring root causes appeared?"
+```
+
+The research path plans discovery queries, applies server-owned incident/date/access
+filters, partitions evidence by document, fans out isolated workers, deterministically
+reduces cited findings, and retries one failed batch when its depth and model-call
+budgets allow. A child failure cannot expose another child's context and produces an
+explicitly incomplete result if it cannot be recovered.
+
 ## API and Streamlit UI
 
 Set `ORYSYS_USE_FAKE_ADAPTERS=false` to use the configured Cloudflare and Pinecone
@@ -96,11 +108,42 @@ The API exposes:
 - `GET /v1/conversations/{id}` to load its visible history;
 - `POST /v1/conversations/{id}/messages` to stream ordered SSE activity and answer events.
 
-WP-05 conversation history is process-local and is cleared when the API restarts.
+Conversation history is process-local and is cleared when the API restarts.
 PostgreSQL-backed LangGraph checkpoints and contextual follow-up handling are scheduled
-for WP-09. The development identity is server-configured through `ORYSYS_DEMO_*` values;
-requests cannot select their own tenant, role, department, or clearance. OIDC replaces
-this development identity in WP-07.
+for WP-09.
+
+## Authentication and roles
+
+For credential-free development, leave `ORYSYS_AUTH_ENABLED=false`; the server uses the
+configured `ORYSYS_DEMO_*` identity. Production refuses to start in this mode.
+
+For the hosted assessment realm, configure the Skycloak automation and OIDC values in
+the ignored `.env`, then provision the realm, clients, roles, and temporary demo users
+idempotently:
+
+```bash
+uv run python -m orysys.auth.provision
+```
+
+Copy `.streamlit/secrets.toml.example` to the ignored
+`.streamlit/secrets.toml`, add the `orysys-ui` client secret and realm discovery URL,
+and set `ORYSYS_AUTH_ENABLED=true`. Streamlit then performs Authorization Code login
+and forwards only the access token; FastAPI verifies that token independently.
+
+An equivalent local upstream Keycloak is available at `http://localhost:8080`:
+
+```bash
+docker compose --profile identity up -d keycloak
+```
+
+Point `KEYCLOAK_ISSUER` and Streamlit's `server_metadata_url` at the local `orysys`
+realm. The imported `viewer`, `analyst`, and `administrator` users receive the temporary
+password declared in the local realm export and must change it at first login.
+
+The role policy is server-owned: viewers get scoped knowledge search; analysts also get
+analytics and read-only MCP access; administrators additionally qualify for approval-
+gated impactful actions. Request bodies and model output cannot choose tenant, role,
+department, clearance, retrieval namespace, or tool capabilities.
 
 ## Architecture
 
@@ -138,6 +181,11 @@ Implemented in the baseline:
 - lifecycle-managed FastAPI dependencies and a versioned SSE chat boundary;
 - process-local, owner-scoped conversation history with disconnect cancellation;
 - Streamlit chat, activity, validation, and evidence views using native components.
+- bounded plan/discover/partition/fan-out/reduce research with one gap retry;
+- deterministic recurring-cause aggregation with authorized citation validation;
+- Skycloak-hosted Keycloak realm provisioning and equivalent local realm export;
+- cached OIDC discovery/JWKS verification, bearer forwarding, and complete role policy;
+- token-derived conversation ownership and cross-tenant denial.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.

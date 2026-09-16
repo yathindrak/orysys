@@ -52,7 +52,7 @@ def test_two_turn_conversation_streams_ordered_sse_and_persists_visible_history(
         knowledge_index=InMemoryKnowledgeIndex([_evidence()]),
     )
     app = create_app(
-        Settings(environment="test", use_fake_adapters=True),
+        Settings(environment="test", use_fake_adapters=True, auth_enabled=False),
         runtime=runtime,
     )
     with TestClient(app) as client:
@@ -91,7 +91,7 @@ def test_two_turn_conversation_streams_ordered_sse_and_persists_visible_history(
 
 
 def test_unknown_conversation_uses_stable_public_error() -> None:
-    app = create_app(Settings(environment="test", use_fake_adapters=True))
+    app = create_app(Settings(environment="test", use_fake_adapters=True, auth_enabled=False))
 
     with TestClient(app) as client:
         response = client.get("/v1/conversations/not-found")

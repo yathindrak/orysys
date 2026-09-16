@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     demo_role: Literal["viewer", "analyst", "administrator"] = "analyst"
     demo_departments: str = "payments"
     demo_clearance: int = Field(default=2, ge=0, le=10)
+    auth_enabled: bool = False
     cloudflare_account_id: str | None = Field(
         default=None, validation_alias="CLOUDFLARE_ACCOUNT_ID"
     )
@@ -58,6 +59,25 @@ class Settings(BaseSettings):
         default="orysys-development", validation_alias="LANGSMITH_PROJECT"
     )
     langsmith_tracing: bool = Field(default=False, validation_alias="LANGSMITH_TRACING")
+    keycloak_issuer: str | None = Field(default=None, validation_alias="KEYCLOAK_ISSUER")
+    keycloak_audience: str = Field(default="orysys-api", validation_alias="KEYCLOAK_AUDIENCE")
+    keycloak_client_id: str = Field(default="orysys-api", validation_alias="KEYCLOAK_CLIENT_ID")
+    oidc_jwks_ttl_seconds: int = Field(default=300, ge=30, le=86_400)
+    oidc_client_secret: SecretStr | None = Field(
+        default=None, validation_alias="ORYSYS_OIDC_CLIENT_SECRET"
+    )
+    skycloak_automation_client_id: str | None = Field(
+        default=None, validation_alias="SKYCLOAK_AUTOMATION_CLIENT_ID"
+    )
+    skycloak_automation_client_secret: SecretStr | None = Field(
+        default=None, validation_alias="SKYCLOAK_AUTOMATION_CLIENT_SECRET"
+    )
+    skycloak_automation_token_url: str | None = Field(
+        default=None, validation_alias="SKYCLOAK_AUTOMATION_TOKEN_URL"
+    )
+    bootstrap_user_password: SecretStr | None = Field(
+        default=None, validation_alias="ORYSYS_BOOTSTRAP_USER_PASSWORD"
+    )
 
     def require_ingestion_credentials(self) -> None:
         required = {
@@ -78,6 +98,10 @@ class Settings(BaseSettings):
         missing = sorted(name for name, value in required.items() if value is None)
         if missing:
             raise ValueError(f"Missing chat settings: {', '.join(missing)}")
+
+    def require_auth_configuration(self) -> None:
+        if self.auth_enabled and not self.keycloak_issuer:
+            raise ValueError("KEYCLOAK_ISSUER is required when ORYSYS_AUTH_ENABLED=true")
 
 
 @lru_cache

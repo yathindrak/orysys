@@ -13,6 +13,20 @@ class AuthorizationDenied(OrysysError):
         super().__init__("authorization_denied", "This action is not permitted.")
 
 
+class AuthenticationFailed(OrysysError):
+    def __init__(self) -> None:
+        super().__init__("authentication_failed", "A valid access token is required.")
+
+
+class AuthenticationUnavailable(OrysysError):
+    def __init__(self) -> None:
+        super().__init__(
+            "authentication_unavailable",
+            "Authentication is temporarily unavailable.",
+            retryable=True,
+        )
+
+
 class ProviderUnavailable(OrysysError):
     def __init__(self, provider: str) -> None:
         super().__init__(

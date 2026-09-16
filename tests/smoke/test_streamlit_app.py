@@ -9,6 +9,8 @@ from orysys.ui.api_client import OrysysApiClient
 
 
 def test_streamlit_chat_shell_renders_without_custom_html(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("ORYSYS_AUTH_ENABLED", "false")
+
     def create_conversation(client: OrysysApiClient) -> Conversation:
         del client
         return Conversation(

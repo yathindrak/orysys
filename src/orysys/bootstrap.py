@@ -12,6 +12,7 @@ from orysys.adapters.fakes import (
     InMemoryKnowledgeIndex,
     ScriptedChatModel,
 )
+from orysys.adapters.model_research import ModelResearchPlanner, ModelResearchWorker
 from orysys.adapters.pinecone.reranker import PineconeHostedReranker
 from orysys.adapters.pinecone.retrieval import PineconeKnowledgeIndex
 from orysys.adapters.telemetry import LangSmithTelemetry, NoopTelemetry
@@ -22,6 +23,7 @@ from orysys.ingestion.sparse import PineconeBM25Encoder
 from orysys.ports.models import ChatModel, EmbeddingModel
 from orysys.ports.retrieval import KnowledgeIndex, SearchOptions
 from orysys.ports.services import Telemetry
+from orysys.research.runtime import ResearchAssistantRuntime, RoutingAssistantRuntime
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +51,7 @@ def build_container(settings: Settings) -> ApplicationContainer:
 
 
 @asynccontextmanager
-async def live_assistant_runtime(settings: Settings) -> AsyncIterator[DirectAssistantRuntime]:
+async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAssistantRuntime]:
     """Compose and close the provider-backed direct-answer runtime."""
 
     settings.require_ingestion_credentials()
@@ -91,12 +93,19 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[DirectAssi
             enabled=settings.langsmith_tracing,
         )
     try:
-        yield DirectAssistantRuntime(
+        direct = DirectAssistantRuntime(
             chat_model=chat,
             knowledge_index=retriever,
             search_options=SearchOptions(limit=12, candidate_count=28, alpha=0.5),
             telemetry=telemetry,
         )
+        research = ResearchAssistantRuntime(
+            planner=ModelResearchPlanner(chat),
+            worker=ModelResearchWorker(chat),
+            knowledge_index=retriever,
+            telemetry=telemetry,
+        )
+        yield RoutingAssistantRuntime(direct=direct, research=research)
     finally:
         await retriever.close()
         await rerank_client.close()

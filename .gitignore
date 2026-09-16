@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 .venv/
 __pycache__/
 *.py[cod]
@@ -16,4 +17,3 @@ build/
 .idea/
 .vscode/
 tmp/
-

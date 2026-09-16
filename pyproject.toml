@@ -17,6 +17,7 @@ dependencies = [
   "langsmith>=0.4,<1",
   "pinecone>=10,<11",
   "pinecone-text>=0.11,<0.12",
+  "pyjwt[crypto]>=2.10,<3",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
   "pypdf>=6,<7",

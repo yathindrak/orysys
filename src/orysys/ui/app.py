@@ -4,6 +4,7 @@ from typing import Any
 
 import streamlit as st
 
+from orysys.config import Settings
 from orysys.domain.events import ActivityEvent, EventType
 from orysys.domain.evidence import Evidence
 from orysys.domain.validation import ValidationResult
@@ -23,12 +24,35 @@ st.set_page_config(page_title="Orysys", page_icon=Icon.ASSISTANT, layout="wide")
 st.title(f"{Icon.ASSISTANT} Orysys")
 st.caption("Access-scoped enterprise knowledge assistant")
 
+settings = Settings()
+
+
+def _access_token() -> str | None:
+    if not settings.auth_enabled:
+        return None
+    if not st.user.is_logged_in:
+        if st.button("Log in with Skycloak", type="primary"):
+            st.login("skycloak")
+        st.stop()
+    try:
+        token = st.user.tokens["access"]
+    except (KeyError, AttributeError):
+        st.error("Skycloak did not return an access token.")
+        st.stop()
+    return str(token)
+
+
+access_token = _access_token()
+
 
 def _client() -> OrysysApiClient:
     existing = st.session_state.get("api_client")
     if isinstance(existing, OrysysApiClient):
         return existing
-    client = OrysysApiClient(os.getenv("ORYSYS_API_URL", "http://localhost:8000"))
+    client = OrysysApiClient(
+        os.getenv("ORYSYS_API_URL", "http://localhost:8000"),
+        access_token=access_token,
+    )
     st.session_state.api_client = client
     return client
 
@@ -86,6 +110,8 @@ messages = _messages()
 with st.sidebar:
     st.subheader("Session")
     st.caption(f"Conversation: {conversation_id}")
+    if settings.auth_enabled and st.button("Log out", width="stretch"):
+        st.logout()
     if st.button("New conversation", width="stretch"):
         conversation = api.create_conversation()
         st.session_state.conversation_id = conversation.conversation_id
