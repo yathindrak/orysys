@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">Orysys system context</title>
+  <desc id="desc">Employee access through Streamlit and FastAPI to policy-controlled LangGraph workflows, providers, tools, storage, and telemetry.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c667a"/>
+    </marker>
+    <style>
+      .box { fill: #f7f8fa; stroke: #5c667a; stroke-width: 2; rx: 12; }
+      .core { fill: #e8f5ee; }
+      .workflow { fill: #fff4dc; }
+      .external { fill: #eef3ff; }
+      .label { font: 600 17px system-ui, sans-serif; fill: #1d2433; text-anchor: middle; }
+      .small { font: 14px system-ui, sans-serif; fill: #465064; text-anchor: middle; }
+      .line { fill: none; stroke: #5c667a; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="#ffffff"/>
+  <text x="700" y="42" class="label" style="font-size:26px">Orysys system context</text>
+
+  <rect x="45" y="320" width="150" height="70" class="box"/>
+  <text x="120" y="362" class="label">Employee</text>
+  <rect x="250" y="320" width="165" height="70" class="box"/>
+  <text x="332" y="350" class="label">Streamlit UI</text>
+  <text x="332" y="373" class="small">chat + evidence</text>
+  <rect x="470" y="320" width="165" height="70" class="box core"/>
+  <text x="552" y="350" class="label">FastAPI API</text>
+  <text x="552" y="373" class="small">Bearer + SSE</text>
+  <rect x="690" y="320" width="190" height="70" class="box"/>
+  <text x="785" y="349" class="label">Policy boundary</text>
+  <text x="785" y="373" class="small">identity • rate • input</text>
+  <rect x="935" y="320" width="190" height="70" class="box workflow"/>
+  <text x="1030" y="349" class="label">LangGraph</text>
+  <text x="1030" y="373" class="small">direct • research • approval</text>
+
+  <path d="M195 355 H250" class="line"/><path d="M415 355 H470" class="line"/>
+  <path d="M635 355 H690" class="line"/><path d="M880 355 H935" class="line"/>
+
+  <rect x="245" y="105" width="175" height="70" class="box external"/>
+  <text x="332" y="135" class="label">Keycloak</text>
+  <text x="332" y="158" class="small">hosted or local OIDC</text>
+  <path d="M332 320 V176" class="line"/>
+
+  <rect x="700" y="105" width="170" height="70" class="box external"/>
+  <text x="785" y="135" class="label">Redis</text>
+  <text x="785" y="158" class="small">token bucket</text>
+  <path d="M785 320 V176" class="line"/>
+
+  <rect x="1180" y="90" width="175" height="70" class="box external"/>
+  <text x="1267" y="120" class="label">Cloudflare AI</text>
+  <text x="1267" y="143" class="small">chat + embeddings</text>
+  <rect x="1180" y="195" width="175" height="70" class="box external"/>
+  <text x="1267" y="225" class="label">Pinecone</text>
+  <text x="1267" y="248" class="small">hybrid retrieval</text>
+  <rect x="1180" y="300" width="175" height="70" class="box external"/>
+  <text x="1267" y="330" class="label">MCP sidecar</text>
+  <text x="1267" y="353" class="small">allow-listed reads</text>
+  <rect x="1180" y="405" width="175" height="70" class="box external"/>
+  <text x="1267" y="435" class="label">PostgreSQL</text>
+  <text x="1267" y="458" class="small">state + memory + audit</text>
+  <rect x="1180" y="510" width="175" height="70" class="box external"/>
+  <text x="1267" y="540" class="label">LangSmith</text>
+  <text x="1267" y="563" class="small">redacted traces</text>
+
+  <path d="M1125 340 C1150 300 1150 125 1180 125" class="line"/>
+  <path d="M1125 345 C1150 320 1150 230 1180 230" class="line"/>
+  <path d="M1125 355 H1180" class="line"/>
+  <path d="M1125 365 C1150 390 1150 440 1180 440" class="line"/>
+  <path d="M1125 370 C1150 420 1150 545 1180 545" class="line"/>
+
+  <rect x="690" y="535" width="190" height="82" class="box"/>
+  <text x="785" y="566" class="label">Deterministic controls</text>
+  <text x="785" y="589" class="small">scope • tool auth • citations</text>
+  <path d="M785 390 V535" class="line"/>
+  <rect x="935" y="535" width="190" height="82" class="box"/>
+  <text x="1030" y="566" class="label">Public activity</text>
+  <text x="1030" y="589" class="small">safe events + validation</text>
+  <path d="M1030 390 V535" class="line"/>
+</svg>

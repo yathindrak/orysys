@@ -23,7 +23,8 @@ tokens, database URLs, raw restricted documents, or Streamlit client secrets.
 - Point out the trust boundaries: browser, API, model, Pinecone, MCP, PostgreSQL, Redis,
   Keycloak, and LangSmith.
 
-Evidence: `docs/diagrams/system-context.mmd`, ADR index, threat model.
+Evidence: `docs/diagrams/system-context.mmd`, rendered `system-context.svg`, ADR index,
+threat model.
 
 ## 5–10 min: identity and role policy
 

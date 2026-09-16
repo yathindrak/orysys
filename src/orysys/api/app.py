@@ -132,6 +132,10 @@ def create_app(
         raise ValueError("Fake adapters are not permitted in production")
     if resolved.environment == "production" and not resolved.auth_enabled:
         raise ValueError("Authentication must be enabled in production")
+    if resolved.environment == "production" and (
+        resolved.langsmith_api_key is None or not resolved.langsmith_tracing
+    ):
+        raise ValueError("LangSmith tracing must be configured in production")
     resolved.require_auth_configuration()
     if (
         resolved.environment == "production"

@@ -40,12 +40,12 @@ class ApplicationContainer:
 
 
 def build_container(settings: Settings) -> ApplicationContainer:
-    """Construct process-scoped dependencies in one reviewable location."""
+    """Construct the synchronous, credential-free development container."""
 
     if not settings.use_fake_adapters:
         raise OrysysError(
-            "live_adapters_not_configured",
-            "Live adapters have not been implemented for this baseline.",
+            "async_live_runtime_required",
+            "Provider-backed adapters require the lifecycle-managed live assistant runtime.",
         )
     return ApplicationContainer(
         settings=settings,

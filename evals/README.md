@@ -1,5 +1,20 @@
 # Retrieval evaluation
 
+## Grounded-answer behavior
+
+Run the versioned, credential-free answer suite with:
+
+```bash
+uv run python -m orysys.evals.answers
+```
+
+It classifies authorized citations, safe insufficient-evidence output, and fabricated
+citations against `evals/datasets/grounded-answers-v1.json`. For an independent,
+selective quality signal, run `uv run python -m orysys.evals.answers --live-judge`.
+The live judge receives only synthetic fixture text and does not replace deterministic
+citation enforcement. It writes to a separate live-judge result path so it cannot
+overwrite the deterministic release artifact.
+
 Run the live retrieval benchmark with:
 
 ```bash

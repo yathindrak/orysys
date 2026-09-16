@@ -2,17 +2,20 @@
 
 This document is the acceptance checklist for Orysys — Enterprise Knowledge Assistant. A requirement is met only when spec, implementation, automated check, and walkthrough agree at the same commit.
 
-Status values:
+Status values used by the release audit:
 
 - **Planned:** design and work package are identified; no implementation claim.
 - **Implemented:** code exists and local tests pass.
 - **Verified:** code, automated evidence, documentation, and walkthrough evidence agree.
 
-All rows currently remain **Planned**.
+This matrix defines what evidence each requirement needs; it does not itself claim that
+the evidence was captured. The current grouped status, exceptions, and evidence links
+are maintained in [`release-audit.md`](release-audit.md). A row is **Verified** only
+after its automated and walkthrough evidence are both recorded for the same commit.
 
 ## 1. Objective and user experience
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | OBJ-01 | Enterprise knowledge assistant, not a thin LLM wrapper | Modular monolith, typed domain, explicit graph, provider adapters, security and evaluation | Architecture/import tests and end-to-end scenarios | Architecture-to-request walkthrough |
 | OBJ-02 | Search organizational documents | `KnowledgeIndex` over synthetic bank corpus | Retrieval evaluation and filter tests | Search policy/runbook/incident examples |
@@ -26,7 +29,7 @@ All rows currently remain **Planned**.
 
 ## 2. Frontend
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | UI-01 | Use Streamlit | Thin Streamlit process | Compose smoke test | Open running application |
 | UI-02 | Multi-turn chat | Server-owned conversation/thread ID and checkpoint reload | UI/API multi-turn integration test | Two related questions |
@@ -42,7 +45,7 @@ All rows currently remain **Planned**.
 
 ## 3. Backend and async engineering
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | BE-01 | Python | Python 3.13 project managed by uv | CI interpreter and lock checks | Repository configuration |
 | BE-02 | FastAPI | Versioned routes and lifecycle composition root | API contract tests | API docs/requests |
@@ -54,7 +57,7 @@ All rows currently remain **Planned**.
 
 ## 4. LangGraph and specialized agents
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | LG-01 | LangGraph orchestration | Explicit compiled `StateGraph` | Graph topology snapshot/test | Graph diagram and live transitions |
 | LG-02 | Supervisor agent | Typed intent, plan, budget and route | Structured-output and routing tests | Supervisor selects path |
@@ -67,7 +70,7 @@ All rows currently remain **Planned**.
 
 ## 5. Recursive Language Model behavior
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | RLM-01 | Explore document collections | Metadata-aware discovery stage | Discovery coverage tests | Candidate collection counts |
 | RLM-02 | Generate Python-based search plans | Model emits validated plan DSL; trusted Python executes it | Plan schema/rejection tests | Rendered plan summary |
@@ -80,7 +83,7 @@ All rows currently remain **Planned**.
 
 ## 6. Retrieval and Pinecone
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | RAG-01 | Dense embeddings | Cloudflare Qwen3 embedding adapter, 1,024 dimensions and L2 normalization | Semantic retrieval cases and dimension assertion | Paraphrased question |
 | RAG-02 | Sparse keyword/BM25 | Corpus-fitted `pinecone-text` BM25 encoder | Exact-code retrieval cases | Exact incident/error query |
@@ -95,7 +98,7 @@ All rows currently remain **Planned**.
 
 ## 7. Memory
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | MEM-01 | Preserve user context | Trusted principal plus scoped checkpoint state | Identity/context tests | Role/context maintained |
 | MEM-02 | Preserve previous questions | Postgres checkpointer keyed by thread ID | Multi-turn persistence tests | Follow-up turn |
@@ -107,7 +110,7 @@ All rows currently remain **Planned**.
 
 ## 8. Tools and MCP
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | TOOL-01 | Knowledge search tool | Scoped `KnowledgeIndex` tool | Tool/authorization tests | Agent-triggered document search |
 | TOOL-02 | Simple MCP server | Separate official-SDK server with dummy data | MCP handshake/schema/timeout tests | Service catalog or incident lookup |
@@ -118,7 +121,7 @@ All rows currently remain **Planned**.
 
 ## 9. Model and observability
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | LLM-01 | Use a modern LLM | Cloudflare Qwen3 generation model behind typed adapter (default vendor); GLM alternate and generic OpenAI-protocol fallback remain configurable, off by default | Provider contract and structured-output tests | Configured model shown safely |
 | LLM-02 | Document selection rationale | ADR/research report with quality/cost roles | Documentation link audit | Trade-off explanation |
@@ -131,7 +134,7 @@ All rows currently remain **Planned**.
 
 ## 10. Security, validation, and brand
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | SEC-01 | Instruction override protection | Fixed hierarchy, delimited evidence, deterministic controls | User/retrieved injection suite | Retrieved injection ignored |
 | SEC-02 | Data exfiltration protection | Scope enforcement, egress allow-list, redaction, excerpt limits | Cross-tenant/secret leakage tests | Unauthorized source request denied |
@@ -147,7 +150,7 @@ All rows currently remain **Planned**.
 
 ## 11. Authentication, RBAC, and rate limiting
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | AUTH-01 | Implement an allowed auth option | Upstream Keycloak hosted by Skycloak; local equivalent profile | OIDC/JWKS and local realm smoke tests | Login and issuer explanation |
 | AUTH-02 | Viewer role | Chat/search only | Positive/negative capability tests | Viewer search and tool denial |
@@ -161,7 +164,7 @@ All rows currently remain **Planned**.
 
 ## 12. Required failure handling
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | ERR-01 | LLM failures | Classified timeout/rate/provider/parse failures and bounded retry | Failure-injection tests | Controlled model failure |
 | ERR-02 | Vector DB failures | Typed unavailable/degraded paths; never fabricate | Pinecone adapter failures | Controlled retrieval outage |
@@ -172,7 +175,7 @@ All rows currently remain **Planned**.
 
 ## 13. Sample data
 
-| ID | Requirement | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | Requirement | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | DATA-01 | Incident reports | Synthetic payment/non-payment incidents across dates/severity | Fixture/schema tests | Annual outage query |
 | DATA-02 | Architecture documents | Synthetic service architecture docs | Fixture/schema tests | Architecture question |
@@ -183,7 +186,7 @@ All rows currently remain **Planned**.
 
 ## 14. v1.1 extensions (staged)
 
-| ID | v1.1 extension | Planned implementation | Automated evidence | Walkthrough evidence |
+| ID | v1.1 extension | Implementation | Automated evidence | Required walkthrough evidence |
 |---|---|---|---|---|
 | EXT-01 | Multi-agent collaboration and failure cascade handling | Typed shared state, isolated workers, bounded budgets, deterministic reducer, partial failures | Worker failure/deadline/circuit tests | One batch fails while siblings complete |
 | EXT-02 | Human-in-the-loop approval | LangGraph interrupt and secure restart-safe resume | approve/deny/expire/replay/restart tests | Admin action pause and resume |
@@ -209,7 +212,7 @@ All rows currently remain **Planned**.
 
 ## 16. Release artifacts
 
-| ID | Artifact | Planned artifact | Completion check |
+| ID | Artifact | Artifact definition | Completion check |
 |---|---|---|---|
 | DEL-01 | Public source repository | GitHub repository at final reviewed commit | Anonymous clone/setup succeeds; secret scan clean |
 | DEL-02 | Architecture diagram | Mermaid source plus rendered PNG/SVG in `docs/diagrams/` | Matches implemented modules and deployment |
@@ -222,7 +225,7 @@ All rows currently remain **Planned**.
 
 Before release:
 
-1. Replace each **Planned** status only when implementation exists.
+1. Change a requirement's release-audit status only when implementation exists.
 2. Link every row to its code location and exact test name.
 3. Attach a trace ID, screenshot, result file, or walkthrough timestamp where claimed.
 4. Remove or label features that did not meet their acceptance criteria.

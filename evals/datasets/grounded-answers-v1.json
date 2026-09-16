@@ -1,0 +1,59 @@
+{
+  "version": "grounded-answers-v1",
+  "cases": [
+    {
+      "id": "authorized-citation",
+      "question": "What caused incident PAY-DB-042?",
+      "answer": {
+        "claims": [
+          {
+            "text": "PAY-DB-042 was caused by database connection pool exhaustion.",
+            "evidence_ids": ["ev-pay-db-042"]
+          }
+        ],
+        "summary": "The incident was caused by database connection pool exhaustion.",
+        "incomplete": false
+      },
+      "authorized_evidence_ids": ["ev-pay-db-042"],
+      "evidence_excerpts": [
+        "PAY-DB-042 root cause: payment database connection pool exhaustion."
+      ],
+      "required_terms": ["database", "connection pool exhaustion"],
+      "expected_behavior": "grounded",
+      "judge": true
+    },
+    {
+      "id": "safe-insufficient-evidence",
+      "question": "What was the private customer balance?",
+      "answer": {
+        "claims": [],
+        "summary": "There is insufficient authorized evidence to answer this question.",
+        "incomplete": true
+      },
+      "authorized_evidence_ids": [],
+      "evidence_excerpts": [],
+      "required_terms": [],
+      "expected_behavior": "safe_insufficient",
+      "judge": false
+    },
+    {
+      "id": "fabricated-citation",
+      "question": "Which runbook proves the recovery step?",
+      "answer": {
+        "claims": [
+          {
+            "text": "The recovery step is proven by a runbook.",
+            "evidence_ids": ["invented-evidence"]
+          }
+        ],
+        "summary": "A runbook proves the recovery step.",
+        "incomplete": false
+      },
+      "authorized_evidence_ids": ["ev-real-runbook"],
+      "evidence_excerpts": ["The authorized runbook excerpt does not describe this step."],
+      "required_terms": [],
+      "expected_behavior": "reject",
+      "judge": false
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 # Orysys — Build Plan (v1 Pilot)
 
+This file preserves the planned work-package sequence. For current implementation,
+verification, limitations, and release evidence, see
+[`release-audit.md`](release-audit.md).
+
 ## 1. Outcome
 
 Ship a reproducible, supportable Orysys v1 that answers with evidence, shows its

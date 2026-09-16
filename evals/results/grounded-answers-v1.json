@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "actual_behavior": "grounded",
+      "expected_behavior": "grounded",
+      "id": "authorized-citation",
+      "passed": true
+    },
+    {
+      "actual_behavior": "safe_insufficient",
+      "expected_behavior": "safe_insufficient",
+      "id": "safe-insufficient-evidence",
+      "passed": true
+    },
+    {
+      "actual_behavior": "reject",
+      "expected_behavior": "reject",
+      "id": "fabricated-citation",
+      "passed": true
+    }
+  ],
+  "judge_model": null,
+  "judge_profile": "deterministic-only",
+  "passed": 3,
+  "suite": "grounded-answers-v1",
+  "total": 3
+}

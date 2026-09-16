@@ -4,7 +4,7 @@ Orysys is an access-scoped enterprise knowledge assistant. It is designed to
 produce evidence-backed answers, expose safe execution activity, and keep model
 decisions inside deterministic authorization and validation controls.
 
-The repository includes the product baseline, ingestion and hybrid retrieval,
+The repository includes the v1 product, ingestion and hybrid retrieval,
 grounded direct and recursive-research LangGraph paths, a streaming FastAPI boundary,
 a Streamlit client, portable Keycloak OIDC authentication, authorized analytics/MCP
 tools, PostgreSQL checkpoints, and consent-based cross-thread memory.
@@ -164,9 +164,15 @@ uv run python -m orysys.feedback.export --langsmith-dataset orysys-reviewed
 Run the deterministic security-control evaluation with:
 
 ```bash
+uv run python -m orysys.evals.answers
 uv run python -m orysys.evals.controls
 uv run python -m orysys.evals.reliability
 ```
+
+The answer suite validates grounded, insufficient-evidence, and fabricated-citation
+fixtures without credentials. Add `--live-judge` to score only the selected grounded
+case with the separately configured `CLOUDFLARE_EVAL_MODEL`; deterministic checks remain
+the release gate because an external judge is nondeterministic.
 
 ## Authorized tools and MCP
 
@@ -237,16 +243,19 @@ protocol boundary. Domain and application code depend on project-owned ports;
 provider SDKs remain in adapters. See:
 
 - [`docs/architecture-plan.md`](docs/architecture-plan.md)
+- [`docs/diagrams/system-context.svg`](docs/diagrams/system-context.svg)
 - [`docs/implementation-plan.md`](docs/implementation-plan.md)
 - [`docs/requirements-traceability.md`](docs/requirements-traceability.md)
 - [`docs/threat-model.md`](docs/threat-model.md)
 - [`docs/reliability.md`](docs/reliability.md)
 - [`docs/operations.md`](docs/operations.md)
+- [`docs/release-audit.md`](docs/release-audit.md)
+- [`docs/release-checklist.md`](docs/release-checklist.md)
 - [`docs/adrs/README.md`](docs/adrs/README.md)
 
 ## Current scope
 
-Implemented in the baseline:
+Implemented in v1:
 
 - immutable identity and server-derived access-scope contracts;
 - evidence, claim, plan, event, tool, validation, memory, and feedback schemas;

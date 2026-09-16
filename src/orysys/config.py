@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         validation_alias="CLOUDFLARE_CHAT_MODEL",
     )
+    cloudflare_eval_model: str = Field(
+        default="@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        validation_alias="CLOUDFLARE_EVAL_MODEL",
+    )
     cloudflare_chat_max_tokens: int = Field(
         default=4096, ge=1, validation_alias="CLOUDFLARE_CHAT_MAX_TOKENS"
     )

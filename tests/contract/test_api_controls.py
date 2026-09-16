@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from orysys.api.app import create_app
@@ -138,6 +139,8 @@ def test_production_rejects_fake_adapters() -> None:
         keycloak_issuer="https://identity.example.test/realms/orysys",
         upstash_redis_rest_url="https://redis.example.test",
         upstash_redis_rest_token="test-token",
+        langsmith_api_key=None,
+        langsmith_tracing=False,
     )
 
     try:
@@ -146,3 +149,19 @@ def test_production_rejects_fake_adapters() -> None:
         assert str(error) == "Fake adapters are not permitted in production"
     else:
         raise AssertionError("production accepted fake adapters")
+
+
+def test_production_requires_langsmith_tracing() -> None:
+    settings = Settings(
+        environment="production",
+        use_fake_adapters=False,
+        auth_enabled=True,
+        keycloak_issuer="https://identity.example.test/realms/orysys",
+        upstash_redis_rest_url="https://redis.example.test",
+        upstash_redis_rest_token="test-token",
+        langsmith_api_key=None,
+        langsmith_tracing=False,
+    )
+
+    with pytest.raises(ValueError, match="LangSmith tracing must be configured in production"):
+        create_app(settings)

@@ -28,6 +28,8 @@ jobs:
         run: uv run pytest
       - name: Deterministic control evaluation
         run: uv run python -m orysys.evals.controls --output /tmp/control-suite.json
+      - name: Grounded-answer evaluation
+        run: uv run python -m orysys.evals.answers --output /tmp/grounded-answers.json
       - name: Local load smoke
         run: uv run python -m orysys.evals.reliability --output /tmp/load-smoke.json
 
