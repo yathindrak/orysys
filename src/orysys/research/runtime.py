@@ -18,10 +18,14 @@ from orysys.domain.plans import ResearchPlan
 from orysys.domain.policy import derive_access_scope
 from orysys.domain.research import Finding, ResearchBatch, WorkerOutcome, WorkerStatus
 from orysys.domain.validation import ValidationResult, validate_answer_citations
-from orysys.graph.runtime import AssistantRunResult, DirectAssistantRuntime
+from orysys.graph.runtime import (
+    AssistantRunResult,
+    DirectAssistantRuntime,
+    _checkpoint_config,
+)
 from orysys.ports.research import ResearchPlanner, ResearchWorker
 from orysys.ports.retrieval import KnowledgeIndex, SearchOptions
-from orysys.ports.services import Telemetry
+from orysys.ports.services import Telemetry, ToolGateway
 
 
 class ResearchState(TypedDict, total=False):
@@ -337,7 +341,7 @@ def route_after_reduce(state: ResearchState) -> str:
     return "compose"
 
 
-def build_research_graph(nodes: ResearchNodes) -> Any:
+def build_research_graph(nodes: ResearchNodes, *, checkpointer: Any | None = None) -> Any:
     builder = StateGraph(ResearchState)
     builder.add_node("plan", nodes.plan)
     builder.add_node("discover", nodes.discover)
@@ -358,7 +362,7 @@ def build_research_graph(nodes: ResearchNodes) -> Any:
     )
     builder.add_edge("retry_gaps", "reduce")
     builder.add_edge("compose", END)
-    return cast(Any, builder.compile())
+    return cast(Any, builder.compile(checkpointer=checkpointer))
 
 
 class ResearchAssistantRuntime:
@@ -369,9 +373,11 @@ class ResearchAssistantRuntime:
         worker: ResearchWorker,
         knowledge_index: KnowledgeIndex,
         telemetry: Telemetry | None = None,
+        checkpointer: Any | None = None,
     ) -> None:
         self._graph = build_research_graph(
-            ResearchNodes(planner=planner, worker=worker, knowledge_index=knowledge_index)
+            ResearchNodes(planner=planner, worker=worker, knowledge_index=knowledge_index),
+            checkpointer=checkpointer,
         )
         self._telemetry = telemetry or NoopTelemetry()
 
@@ -390,7 +396,13 @@ class ResearchAssistantRuntime:
             {"request_id": request.request_id, "run_id": run_id, "route": "research"},
         ):
             async with asyncio.timeout(65):
-                raw: dict[str, Any] = await self._graph.ainvoke(initial, {"max_concurrency": 4})
+                raw: dict[str, Any] = await self._graph.ainvoke(
+                    initial,
+                    {
+                        **_checkpoint_config(request, principal),
+                        "max_concurrency": 4,
+                    },
+                )
         state = cast(ResearchState, raw)
         return AssistantRunResult(
             run_id=run_id,
@@ -415,9 +427,11 @@ class RoutingAssistantRuntime:
         *,
         direct: DirectAssistantRuntime,
         research: ResearchAssistantRuntime,
+        tools: ToolGateway | None = None,
     ) -> None:
         self._direct = direct
         self._research = research
+        self.tool_gateway = tools
 
     async def run(self, request: AssistantRequest, principal: Principal) -> AssistantRunResult:
         runtime = self._research if is_research_request(request.message) else self._direct

@@ -19,6 +19,7 @@ class EventType(StrEnum):
     TOOL_REQUESTED = "tool.requested"
     TOOL_COMPLETED = "tool.completed"
     TOOL_DENIED = "tool.denied"
+    TOOL_FAILED = "tool.failed"
     VALIDATION_COMPLETED = "validation.completed"
     ANSWER_DELTA = "answer.delta"
     ANSWER_COMPLETED = "answer.completed"

@@ -5,6 +5,8 @@
 - [ADR-0003: Trusted identity and evidence boundaries](0003-trust-boundaries.md)
 - [ADR-0004: Explicit bounded research graph](0004-bounded-research-graph.md)
 - [ADR-0005: Portable Keycloak OIDC boundary](0005-keycloak-oidc.md)
+- [ADR-0006: Double-authorized tools and MCP boundary](0006-authorized-tools-mcp.md)
+- [ADR-0007: Separate checkpoint and consented-memory persistence](0007-persistence-memory.md)
 
 ADRs record decisions rather than implementation claims. Superseded decisions remain
 in the repository and link to their replacement.

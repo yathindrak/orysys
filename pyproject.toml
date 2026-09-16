@@ -24,6 +24,10 @@ dependencies = [
   "structlog>=25,<26",
   "streamlit[auth]>=1.63,<2",
   "uvicorn[standard]>=0.34,<1",
+  "mcp>=2.2,<3",
+  "langgraph-checkpoint-postgres>=3.1,<4",
+  "psycopg[binary,pool]>=3.3,<4",
+  "alembic>=1.19,<1.20",
 ]
 
 [dependency-groups]

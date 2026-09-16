@@ -1,7 +1,9 @@
 from collections.abc import AsyncIterator
+from hashlib import sha256
 from typing import Any, cast
 from uuid import uuid4
 
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, ConfigDict
 
 from orysys.adapters.telemetry import NoopTelemetry
@@ -36,6 +38,7 @@ class DirectAssistantRuntime:
         knowledge_index: KnowledgeIndex,
         search_options: SearchOptions | None = None,
         telemetry: Telemetry | None = None,
+        checkpointer: Any | None = None,
     ) -> None:
         nodes = DirectGraphNodes(
             chat_model=chat_model,
@@ -43,7 +46,7 @@ class DirectAssistantRuntime:
             search_options=search_options,
         )
         self._telemetry = telemetry or NoopTelemetry()
-        self._graph = build_direct_graph(nodes, self._telemetry)
+        self._graph = build_direct_graph(nodes, self._telemetry, checkpointer=checkpointer)
 
     async def run(self, request: AssistantRequest, principal: Principal) -> AssistantRunResult:
         run_id = str(uuid4())
@@ -56,7 +59,9 @@ class DirectAssistantRuntime:
         }
         attributes = self._run_attributes(request, principal, run_id)
         async with self._telemetry.span("orysys.assistant", attributes):
-            raw: dict[str, Any] = await self._graph.ainvoke(initial)
+            raw: dict[str, Any] = await self._graph.ainvoke(
+                initial, _checkpoint_config(request, principal)
+            )
         state = cast(AssistantState, raw)
         return AssistantRunResult(
             run_id=run_id,
@@ -79,7 +84,12 @@ class DirectAssistantRuntime:
         }
         attributes = self._run_attributes(request, principal, run_id)
         async with self._telemetry.span("orysys.assistant", attributes):
-            async for part in self._graph.astream(initial, stream_mode="updates", version="v2"):
+            async for part in self._graph.astream(
+                initial,
+                _checkpoint_config(request, principal),
+                stream_mode="updates",
+                version="v2",
+            ):
                 if part["type"] != "updates":
                     continue
                 for update in part["data"].values():
@@ -100,3 +110,12 @@ class DirectAssistantRuntime:
             "tenant_id": principal.tenant_id,
             "roles": sorted(role.value for role in principal.roles),
         }
+
+
+def _checkpoint_config(request: AssistantRequest, principal: Principal) -> RunnableConfig:
+    thread_key = sha256(
+        (
+            f"{principal.tenant_id}\0{principal.subject}\0{request.thread_id}\0{request.request_id}"
+        ).encode()
+    ).hexdigest()
+    return {"configurable": {"thread_id": thread_key}}

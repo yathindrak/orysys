@@ -6,8 +6,8 @@ decisions inside deterministic authorization and validation controls.
 
 The repository includes the product baseline, ingestion and hybrid retrieval,
 grounded direct and recursive-research LangGraph paths, a streaming FastAPI boundary,
-a Streamlit client, and portable Keycloak OIDC authentication with server-derived
-RBAC.
+a Streamlit client, portable Keycloak OIDC authentication, authorized analytics/MCP
+tools, PostgreSQL checkpoints, and consent-based cross-thread memory.
 
 ## Requirements
 
@@ -107,10 +107,49 @@ The API exposes:
 - `POST /v1/conversations` to create a server-owned conversation ID;
 - `GET /v1/conversations/{id}` to load its visible history;
 - `POST /v1/conversations/{id}/messages` to stream ordered SSE activity and answer events.
+- `GET /v1/tools` and `POST /v1/tools/{name}/execute` for role-filtered, validated tools;
+- `POST /v1/memories/proposals`, confirmation, listing, and deletion endpoints.
 
-Conversation history is process-local and is cleared when the API restarts.
-PostgreSQL-backed LangGraph checkpoints and contextual follow-up handling are scheduled
-for WP-09.
+When `ORYSYS_USE_FAKE_ADAPTERS=false` and `DATABASE_URL` is configured, conversations,
+rolling summaries, long-term memories, audits, and LangGraph checkpoints use PostgreSQL
+and survive API restarts. Apply application migrations before starting the live API:
+
+```bash
+uv run alembic upgrade head
+```
+
+LangGraph owns its checkpoint tables through its own `setup()` migrations; Alembic owns
+only Orysys application tables. Checkpoints use a no-pickle serializer with an explicit
+allow-list of project state types.
+
+## Authorized tools and MCP
+
+The tool gateway validates arguments, enforces the authenticated role before dispatch,
+and each handler repeats authorization before provider access. Calls have deadlines,
+idempotency keys, output caps, and redacted activity events.
+
+- `knowledge.search` accepts only query and limit; namespace and filters come from the
+  verified principal.
+- `analytics.incidents` exposes named aggregations over validated incident records. It
+  cannot execute Python expressions, imports, files, subprocesses, or network requests.
+- `mcp.read` calls only the employee-directory, service-catalog, and incident-record
+  operations exposed by the separate MCP server.
+
+Run the official MCP v2 Streamable HTTP server separately:
+
+```bash
+uv run python -m orysys.mcp_server.app
+```
+
+It listens at `http://127.0.0.1:8001/mcp` by default. Override the API-side endpoint with
+`ORYSYS_MCP_SERVER_URL`.
+
+## Durable memory
+
+Memory is never saved from model output automatically. The API first creates a proposal;
+the authenticated owner must confirm it before it can be recalled across conversations.
+Recall, confirmation, expiry, and deletion are tenant-and-owner scoped. Credential-like
+content is rejected, expiry is capped at one year, and lifecycle changes are audited.
 
 ## Authentication and roles
 
@@ -147,7 +186,7 @@ department, clearance, retrieval namespace, or tool capabilities.
 
 ## Architecture
 
-The system is a modular monolith with a separate MCP process planned at the
+The system is a modular monolith with a separate MCP process at the
 protocol boundary. Domain and application code depend on project-owned ports;
 provider SDKs remain in adapters. See:
 
@@ -186,6 +225,10 @@ Implemented in the baseline:
 - Skycloak-hosted Keycloak realm provisioning and equivalent local realm export;
 - cached OIDC discovery/JWKS verification, bearer forwarding, and complete role policy;
 - token-derived conversation ownership and cross-tenant denial.
+- double-authorized knowledge, constrained analytics, and read-only MCP tools;
+- official MCP v2 in-process contract tests and Streamable HTTP server entrypoint;
+- PostgreSQL conversation history, rolling context summaries, and LangGraph checkpoints;
+- explicit memory proposal/confirmation/recall/expiry/deletion with audit events.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.

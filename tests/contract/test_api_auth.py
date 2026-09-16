@@ -63,3 +63,42 @@ def test_conversation_owner_and_tenant_come_only_from_verified_token(
     assert created.status_code == 201
     assert denied.status_code == 404
     assert spoof.status_code == 422
+
+
+def test_tool_api_lists_by_role_and_denies_before_execution(
+    authenticated_app: TestClient,
+) -> None:
+    analytics = {
+        "arguments": {
+            "operation": "count_by_root_cause",
+            "records": [
+                {
+                    "incident_id": "INC-1",
+                    "occurred_on": "2025-01-01",
+                    "service": "payments",
+                    "severity": "high",
+                    "root_cause": "connection saturation",
+                }
+            ],
+        },
+        "idempotency_key": "api-operation-1",
+    }
+    with authenticated_app as client:
+        viewer_tools = client.get("/v1/tools", headers={"Authorization": "Bearer user-one"})
+        viewer_denied = client.post(
+            "/v1/tools/analytics.incidents/execute",
+            headers={"Authorization": "Bearer user-one"},
+            json=analytics,
+        )
+        admin_result = client.post(
+            "/v1/tools/analytics.incidents/execute",
+            headers={"Authorization": "Bearer user-two"},
+            json=analytics,
+        )
+
+    assert viewer_tools.json() == {"tools": ["knowledge.search"]}
+    assert viewer_denied.status_code == 403
+    assert admin_result.status_code == 200
+    assert admin_result.json()["result"]["output"]["groups"] == [
+        {"key": "connection saturation", "count": 1}
+    ]

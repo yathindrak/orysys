@@ -8,7 +8,12 @@ from orysys.graph.state import AssistantState
 from orysys.ports.services import Telemetry
 
 
-def build_direct_graph(nodes: DirectGraphNodes, telemetry: Telemetry) -> Any:
+def build_direct_graph(
+    nodes: DirectGraphNodes,
+    telemetry: Telemetry,
+    *,
+    checkpointer: Any | None = None,
+) -> Any:
     builder = StateGraph(AssistantState)
     builder.add_node("input_policy", _traced("input_policy", nodes.input_policy, telemetry))
     builder.add_node(
@@ -44,7 +49,7 @@ def build_direct_graph(nodes: DirectGraphNodes, telemetry: Telemetry) -> Any:
     builder.add_edge("repair_once", "validate_answer")
     builder.add_edge("finalize", END)
     builder.add_edge("safe_failure", END)
-    return cast(Any, builder.compile())
+    return cast(Any, builder.compile(checkpointer=checkpointer))
 
 
 def _traced(

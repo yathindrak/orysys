@@ -3,7 +3,7 @@ from typing import Protocol
 
 from orysys.domain.events import ActivityEvent
 from orysys.domain.identity import Principal
-from orysys.domain.tools import ToolRequest, ToolResult
+from orysys.domain.tools import ToolRequest, ToolResult, ToolRunContext
 
 
 class IdentityVerifier(Protocol):
@@ -20,7 +20,14 @@ class RateLimiter(Protocol):
 
 
 class ToolGateway(Protocol):
-    async def execute(self, request: ToolRequest, principal: Principal) -> ToolResult: ...
+    def available(self, principal: Principal) -> tuple[str, ...]: ...
+
+    async def execute(
+        self,
+        request: ToolRequest,
+        principal: Principal,
+        context: ToolRunContext,
+    ) -> ToolResult: ...
 
 
 class Telemetry(Protocol):

@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from pinecone import AsyncPinecone
 
 from orysys.adapters.cloudflare.chat import CloudflareChatModel
@@ -12,6 +14,7 @@ from orysys.adapters.fakes import (
     InMemoryKnowledgeIndex,
     ScriptedChatModel,
 )
+from orysys.adapters.mcp_client import McpDirectoryClient
 from orysys.adapters.model_research import ModelResearchPlanner, ModelResearchWorker
 from orysys.adapters.pinecone.reranker import PineconeHostedReranker
 from orysys.adapters.pinecone.retrieval import PineconeKnowledgeIndex
@@ -24,6 +27,8 @@ from orysys.ports.models import ChatModel, EmbeddingModel
 from orysys.ports.retrieval import KnowledgeIndex, SearchOptions
 from orysys.ports.services import Telemetry
 from orysys.research.runtime import ResearchAssistantRuntime, RoutingAssistantRuntime
+from orysys.tools.gateway import AuthorizedToolGateway
+from orysys.tools.handlers import IncidentAnalyticsTool, KnowledgeSearchTool, McpReadTool
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,21 +98,67 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
             enabled=settings.langsmith_tracing,
         )
     try:
-        direct = DirectAssistantRuntime(
-            chat_model=chat,
-            knowledge_index=retriever,
-            search_options=SearchOptions(limit=12, candidate_count=28, alpha=0.5),
-            telemetry=telemetry,
-        )
-        research = ResearchAssistantRuntime(
-            planner=ModelResearchPlanner(chat),
-            worker=ModelResearchWorker(chat),
-            knowledge_index=retriever,
-            telemetry=telemetry,
-        )
-        yield RoutingAssistantRuntime(direct=direct, research=research)
+        async with AsyncExitStack() as stack:
+            checkpointer = None
+            if settings.database_url is not None:
+                checkpointer = await stack.enter_async_context(
+                    AsyncPostgresSaver.from_conn_string(
+                        settings.database_url.get_secret_value(),
+                        serde=_checkpoint_serializer(),
+                    )
+                )
+                await checkpointer.setup()
+            direct = DirectAssistantRuntime(
+                chat_model=chat,
+                knowledge_index=retriever,
+                search_options=SearchOptions(limit=12, candidate_count=28, alpha=0.5),
+                telemetry=telemetry,
+                checkpointer=checkpointer,
+            )
+            research = ResearchAssistantRuntime(
+                planner=ModelResearchPlanner(chat),
+                worker=ModelResearchWorker(chat),
+                knowledge_index=retriever,
+                telemetry=telemetry,
+                checkpointer=checkpointer,
+            )
+            tools = AuthorizedToolGateway(
+                [
+                    KnowledgeSearchTool(retriever),
+                    IncidentAnalyticsTool(),
+                    McpReadTool(McpDirectoryClient(settings.mcp_server_url)),
+                ],
+                telemetry=telemetry,
+            )
+            yield RoutingAssistantRuntime(direct=direct, research=research, tools=tools)
     finally:
         await retriever.close()
         await rerank_client.close()
         await chat.close()
         await embedding.close()
+
+
+def _checkpoint_serializer() -> JsonPlusSerializer:
+    return JsonPlusSerializer(
+        pickle_fallback=False,
+        allowed_msgpack_modules={
+            ("orysys.application.assistant", "AssistantRequest"),
+            ("orysys.domain.events", "ActivityEvent"),
+            ("orysys.domain.events", "EventType"),
+            ("orysys.domain.evidence", "Claim"),
+            ("orysys.domain.evidence", "Evidence"),
+            ("orysys.domain.evidence", "GroundedAnswer"),
+            ("orysys.domain.identity", "AccessScope"),
+            ("orysys.domain.identity", "Principal"),
+            ("orysys.domain.identity", "Role"),
+            ("orysys.domain.plans", "ResearchPlan"),
+            ("orysys.domain.plans", "RunBudget"),
+            ("orysys.domain.research", "Finding"),
+            ("orysys.domain.research", "ResearchBatch"),
+            ("orysys.domain.research", "WorkerOutcome"),
+            ("orysys.domain.research", "WorkerStatus"),
+            ("orysys.domain.validation", "ValidationResult"),
+            ("orysys.ports.models", "ModelMessage"),
+            ("orysys.ports.models", "MessageRole"),
+        },
+    )

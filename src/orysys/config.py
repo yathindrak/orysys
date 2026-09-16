@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     bootstrap_user_password: SecretStr | None = Field(
         default=None, validation_alias="ORYSYS_BOOTSTRAP_USER_PASSWORD"
     )
+    mcp_server_url: str = "http://127.0.0.1:8001/mcp"
 
     def require_ingestion_credentials(self) -> None:
         required = {
