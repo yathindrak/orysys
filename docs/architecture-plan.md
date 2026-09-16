@@ -70,30 +70,72 @@ arbitrary code execution, and model-controlled authorization.
 ## 3. System context
 
 ```mermaid
-flowchart LR
-    User[Employee] --> UI[Streamlit UI]
-    UI -->|OIDC login| Keycloak[Skycloak or local Keycloak]
-    UI -->|Bearer token + SSE| API[FastAPI API]
-    API --> Policy[Identity, rate limit, input policy]
-    Policy --> Runtime[Assistant runtime]
-    Runtime --> Graph[Explicit LangGraph workflow]
-    Graph --> Retrieval[Scoped hybrid retrieval]
-    Graph --> Tools[Authorized tool gateway]
-    Graph --> Approval[Interrupt and approval workflow]
-    Graph --> Validation[Evidence and response validation]
-    Graph --> Cloudflare[Cloudflare Workers AI]
-    Retrieval --> Pinecone[(Pinecone)]
-    Tools --> MCP[MCP sidecar]
-    Graph --> Postgres[(PostgreSQL checkpoints and memory)]
-    API --> Feedback[(Reviewed feedback)]
-    Approval --> Postgres
-    Feedback --> Postgres
-    Policy --> Redis[(Redis token bucket)]
-    Graph --> LangSmith[LangSmith traces]
+flowchart TB
+    User[Employee, analyst, or administrator]
+    UI[Streamlit UI: chat, evidence, and activity]
+    API[FastAPI: authenticated system boundary]
+    Core[Agent orchestration: explicit LangGraph workflows]
+    Guard[Request controls: ownership, rate limit, and input safety]
+    Supervisor[Supervisor responsibility: deterministic direct or research route]
+    DirectRoute[Direct-answer route]
+    ResearchRoute[Multi-document research route]
+
+    DirectRetrieve[Retrieval agent: scoped hybrid search and reranking]
+    ToolAgent[Tool agent: exact allow-listed company enrichment]
+    DirectResponse[Response agent: structured claims and citations]
+    DirectValidation[Validation module: evidence-ID checks and one repair]
+    DirectAnswer[Direct answer stream or safe failure]
+
+    ResearchPlan[Research agent: objective, scope, queries, and budgets]
+    ResearchDiscover[Research retrieval: multi-query evidence discovery]
+    Partition[Partitioner: isolated document batches]
+    Workers[Research worker agents 1 to N: bounded parallel analysis]
+    Reduce[Reducer: deterministic merge and evidence deduplication]
+    ResearchResponse[Research response and citation validation]
+    ResearchAnswer[Supported research answer or marked incomplete]
+
+    Platform[Shared platform services]
+    SecurityServices[Identity and traffic controls]
+    RuntimeServices[Model, retrieval, and tool adapters]
+    Identity[Keycloak OIDC: identity and roles]
+    Redis[(Redis: atomic per-user token buckets)]
+    RetrievalService[Retrieval service: dense and BM25 search plus reranking]
+    Pinecone[(Pinecone index)]
+    ModelPort[Model service: chat, embedding, and reranking ports]
+    Model[Cloudflare Workers AI]
+    ToolGateway[Authorized tool gateway: RBAC, timeout, size, and idempotency]
+    MCP[MCP sidecar: directory, services, and incidents]
+    StateServices[State and control services: conversations, consented memory, human approval, reviewed feedback, audits, and checkpoints]
+    Database[(PostgreSQL)]
+    Telemetry[Observability: every graph step emits correlated activity and traces]
+    LangSmith[LangSmith trace inspection]
+
+    User --> UI --> API
+    API --> Core --> Guard --> Supervisor
+    Supervisor --> DirectRoute --> DirectRetrieve
+    DirectRetrieve --> ToolAgent --> DirectResponse --> DirectValidation --> DirectAnswer
+    Supervisor --> ResearchRoute --> ResearchPlan
+    ResearchPlan --> ResearchDiscover --> Partition --> Workers --> Reduce --> ResearchResponse
+    ResearchResponse --> ResearchAnswer
+
+    API --> Platform
+    Platform --> SecurityServices
+    SecurityServices --> Identity
+    SecurityServices --> Redis
+    Platform --> RuntimeServices
+    RuntimeServices --> RetrievalService --> Pinecone
+    RuntimeServices --> ModelPort --> Model
+    RuntimeServices --> ToolGateway --> MCP
+    Platform --> StateServices --> Database
+    Platform --> Telemetry --> LangSmith
 ```
 
-The rendered copy is [`diagrams/system-context.svg`](diagrams/system-context.svg),
-generated from [`diagrams/system-context.mmd`](diagrams/system-context.mmd).
+The diagram is maintained as
+[`diagrams/system-context.mmd`](diagrams/system-context.mmd) and the editable
+[`diagrams/system-context.excalidraw`](diagrams/system-context.excalidraw) scene.
+Rendered copies are available as
+[`diagrams/system-context.svg`](diagrams/system-context.svg) and
+[`diagrams/system-context.png`](diagrams/system-context.png).
 
 ### Deployment units
 
@@ -155,14 +197,24 @@ Research (src/orysys/research/runtime.py)
 START -> plan -> discover -> partition -> worker -> reduce -> retry_gaps -> compose -> END
 ```
 
-The defined agent roles map to graph responsibilities rather than four
-free-running chatbots:
+The defined agent roles map to graph responsibilities rather than free-running
+chatbots. Some responsibilities use a model; authorization, routing boundaries,
+budgets, reduction, and validation remain controlled by code:
 
-- **Supervisor:** structured intent, decomposition, and routing.
+- **Supervisor:** deterministic direct-versus-research routing and run coordination.
 - **Retrieval specialist:** query variants, access-scoped hybrid retrieval, weighting,
   reranking with a deterministic fallback, and evidence creation.
-- **Research specialist:** bounded recursive/fan-out analysis over document batches.
+- **Tool enrichment specialist:** exact allow-listed identifier detection and calls
+  through the authorized tool gateway.
+- **Research specialist:** planning, discovery, partitioning, and bounded fan-out over
+  isolated document batches.
+- **Research worker agents:** parallel, budgeted analysis of individual batches;
+  failures are returned as labeled outcomes rather than crashing sibling work.
+- **Deterministic reducer:** combines worker findings and deduplicates evidence without
+  another model decision.
 - **Response specialist:** answer composition from the evidence ledger only.
+- **Validation module:** structured-output and citation checks, followed by at most one
+  repair attempt and then safe failure.
 
 This produces clear agent boundaries without multiplying prompts and failure modes.
 
