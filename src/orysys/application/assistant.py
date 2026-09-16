@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from orysys.domain.events import ActivityEvent
 from orysys.domain.identity import Principal
+from orysys.ports.models import ModelMessage
 
 
 class AssistantRequest(BaseModel):
@@ -13,6 +14,7 @@ class AssistantRequest(BaseModel):
     request_id: str = Field(min_length=1)
     thread_id: str = Field(min_length=1)
     message: str = Field(min_length=1, max_length=8_000)
+    history: tuple[ModelMessage, ...] = Field(default=(), max_length=12)
 
 
 class AssistantRuntime(Protocol):

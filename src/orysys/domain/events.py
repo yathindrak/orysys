@@ -18,6 +18,7 @@ class EventType(StrEnum):
     TOOL_DENIED = "tool.denied"
     VALIDATION_COMPLETED = "validation.completed"
     ANSWER_DELTA = "answer.delta"
+    ANSWER_COMPLETED = "answer.completed"
 
 
 class ActivityEvent(BaseModel):

@@ -20,3 +20,8 @@ class ProviderUnavailable(OrysysError):
             f"The {provider} service is temporarily unavailable.",
             retryable=True,
         )
+
+
+class ResourceNotFound(OrysysError):
+    def __init__(self, resource: str) -> None:
+        super().__init__("resource_not_found", f"The requested {resource} was not found.")

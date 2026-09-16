@@ -80,6 +80,28 @@ uv run python -m orysys.graph.cli "What caused PAY-DB-042?"
 The command prints the validated answer, evidence metadata, validation results, and
 ordered public event types. It does not print retrieved excerpts or credentials.
 
+## API and Streamlit UI
+
+Set `ORYSYS_USE_FAKE_ADAPTERS=false` to use the configured Cloudflare and Pinecone
+adapters, then run the API and UI in separate terminals:
+
+```bash
+uv run uvicorn orysys.api.app:create_app --factory --reload
+uv run streamlit run src/orysys/ui/app.py
+```
+
+The API exposes:
+
+- `POST /v1/conversations` to create a server-owned conversation ID;
+- `GET /v1/conversations/{id}` to load its visible history;
+- `POST /v1/conversations/{id}/messages` to stream ordered SSE activity and answer events.
+
+WP-05 conversation history is process-local and is cleared when the API restarts.
+PostgreSQL-backed LangGraph checkpoints and contextual follow-up handling are scheduled
+for WP-09. The development identity is server-configured through `ORYSYS_DEMO_*` values;
+requests cannot select their own tenant, role, department, or clearance. OIDC replaces
+this development identity in WP-07.
+
 ## Architecture
 
 The system is a modular monolith with a separate MCP process planned at the
@@ -113,6 +135,9 @@ Implemented in the baseline:
 - explicit direct-answer `StateGraph` with scoped retrieval and structured output;
 - evidence-ledger citation checks, one repair attempt, and safe insufficient-evidence output;
 - redacted structured logging and manually scoped LangSmith traces.
+- lifecycle-managed FastAPI dependencies and a versioned SSE chat boundary;
+- process-local, owner-scoped conversation history with disconnect cancellation;
+- Streamlit chat, activity, validation, and evidence views using native components.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.

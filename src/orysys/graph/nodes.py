@@ -1,4 +1,5 @@
 import json
+import re
 from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -72,7 +73,7 @@ class DirectGraphNodes:
         )
         try:
             result = await self._knowledge_index.search(
-                state["request"].message,
+                _retrieval_query(state),
                 state["access_scope"],
                 self._search_options,
             )
@@ -129,7 +130,11 @@ class DirectGraphNodes:
                 ),
             }
         draft, error = await self._generate(
-            answer_prompt(state["request"].message, state["evidence"])
+            answer_prompt(
+                state["request"].message,
+                state["evidence"],
+                _history_payload(state),
+            )
         )
         return {
             "draft_answer": draft,
@@ -178,7 +183,10 @@ class DirectGraphNodes:
                 (
                     EventType.VALIDATION_COMPLETED,
                     "validate_answer",
-                    {"passed": passed, "rules": [item.rule for item in results]},
+                    {
+                        "passed": passed,
+                        "results": [item.model_dump(mode="json") for item in results],
+                    },
                 ),
                 (EventType.NODE_COMPLETED, "validate_answer", {"passed": passed}),
             ),
@@ -193,6 +201,7 @@ class DirectGraphNodes:
                 state["request"].message,
                 state["evidence"],
                 failures,
+                _history_payload(state),
             )
         )
         return {
@@ -213,32 +222,55 @@ class DirectGraphNodes:
     async def finalize(self, state: AssistantState) -> AssistantState:
         answer = state["draft_answer"]
         assert answer is not None
-        return {
-            "final_answer": answer,
-            "events": self._events(
-                state,
-                (EventType.ANSWER_DELTA, "finalize", {"text": answer.summary}),
+        specs: list[tuple[EventType, str | None, dict[str, object]]] = [
+            (EventType.ANSWER_DELTA, "finalize", {"text": chunk})
+            for chunk in _text_chunks(answer.summary)
+        ]
+        specs.extend(
+            [
+                (
+                    EventType.ANSWER_COMPLETED,
+                    "finalize",
+                    {
+                        "answer": answer.model_dump(mode="json"),
+                        "evidence": [item.model_dump(mode="json") for item in state["evidence"]],
+                    },
+                ),
                 (
                     EventType.RUN_COMPLETED,
                     "finalize",
                     {"status": "completed", "incomplete": answer.incomplete},
                 ),
-            ),
+            ]
+        )
+        return {
+            "final_answer": answer,
+            "events": self._events(state, *specs),
         }
 
     async def safe_failure(self, state: AssistantState) -> AssistantState:
         answer = GroundedAnswer(claims=(), summary=_SAFE_SUMMARY, incomplete=True)
-        return {
-            "final_answer": answer,
-            "events": self._events(
-                state,
-                (EventType.ANSWER_DELTA, "safe_failure", {"text": answer.summary}),
+        specs: list[tuple[EventType, str | None, dict[str, object]]] = [
+            (EventType.ANSWER_DELTA, "safe_failure", {"text": chunk})
+            for chunk in _text_chunks(answer.summary)
+        ]
+        specs.extend(
+            [
+                (
+                    EventType.ANSWER_COMPLETED,
+                    "safe_failure",
+                    {"answer": answer.model_dump(mode="json"), "evidence": []},
+                ),
                 (
                     EventType.RUN_COMPLETED,
                     "safe_failure",
                     {"status": "insufficient_evidence", "incomplete": True},
                 ),
-            ),
+            ]
+        )
+        return {
+            "final_answer": answer,
+            "events": self._events(state, *specs),
         }
 
     async def _generate(self, prompt: str) -> tuple[GroundedAnswer | None, str | None]:
@@ -302,3 +334,21 @@ def _extract_json(text: str) -> object:
             if stripped.lstrip().startswith("json"):
                 stripped = stripped.lstrip()[4:].lstrip()
     return json.loads(stripped)
+
+
+def _text_chunks(text: str) -> tuple[str, ...]:
+    return tuple(re.findall(r"\S+\s*", text)) or (text,)
+
+
+def _retrieval_query(state: AssistantState) -> str:
+    prior_questions = [
+        message.content for message in state["request"].history if message.role is MessageRole.USER
+    ]
+    return "\n".join([*prior_questions[-2:], state["request"].message])
+
+
+def _history_payload(state: AssistantState) -> tuple[dict[str, str], ...]:
+    return tuple(
+        {"role": message.role.value, "content": message.content}
+        for message in state["request"].history[-6:]
+    )

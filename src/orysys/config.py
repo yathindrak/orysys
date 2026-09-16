@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, ge=1, le=65535)
     use_fake_adapters: bool = True
+    demo_subject: str = "assessment-user"
+    demo_tenant_id: str = "commercial-bank"
+    demo_role: Literal["viewer", "analyst", "administrator"] = "analyst"
+    demo_departments: str = "payments"
+    demo_clearance: int = Field(default=2, ge=0, le=10)
     cloudflare_account_id: str | None = Field(
         default=None, validation_alias="CLOUDFLARE_ACCOUNT_ID"
     )

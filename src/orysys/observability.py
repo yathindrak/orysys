@@ -7,14 +7,20 @@ import structlog
 _SENSITIVE_KEYS = frozenset(
     {
         "authorization",
+        "answer",
         "api_key",
         "api_token",
         "client_secret",
         "content",
         "document_body",
         "excerpt",
+        "message",
         "password",
+        "prompt",
+        "query",
         "secret",
+        "summary",
+        "text",
         "token",
     }
 )
