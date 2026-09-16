@@ -4,7 +4,9 @@ from collections.abc import Iterator
 import httpx
 
 from orysys.application.conversations import Conversation
+from orysys.domain.approval import ApprovalProposal, ApprovalTicket
 from orysys.domain.events import ActivityEvent
+from orysys.domain.feedback import FeedbackItem
 
 
 class OrysysApiClient:
@@ -45,6 +47,43 @@ class OrysysApiClient:
             for line in response.iter_lines():
                 if line.startswith("data: "):
                     yield ActivityEvent.model_validate(json.loads(line[6:]))
+
+    def propose_action(self, *, target: str, reason: str) -> ApprovalTicket:
+        response = self._client.post(
+            "/v1/actions/proposals",
+            headers=self._headers,
+            json={
+                "action": "simulate_service_restart",
+                "target": target,
+                "reason": reason,
+            },
+        )
+        response.raise_for_status()
+        return ApprovalTicket.model_validate(response.json()["ticket"])
+
+    def decide_action(
+        self,
+        proposal_id: str,
+        *,
+        approval_token: str,
+        confirm: bool,
+    ) -> ApprovalProposal:
+        response = self._client.post(
+            f"/v1/actions/{proposal_id}/decision",
+            headers=self._headers,
+            json={"approval_token": approval_token, "confirm": confirm},
+        )
+        response.raise_for_status()
+        return ApprovalProposal.model_validate(response.json()["proposal"])
+
+    def submit_feedback(self, run_id: str, rating: int) -> FeedbackItem:
+        response = self._client.post(
+            "/v1/feedback",
+            headers=self._headers,
+            json={"run_id": run_id, "rating": rating, "route": "chat"},
+        )
+        response.raise_for_status()
+        return FeedbackItem.model_validate(response.json()["feedback"])
 
     def close(self) -> None:
         if self._owns_client:

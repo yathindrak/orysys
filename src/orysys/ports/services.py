@@ -3,6 +3,7 @@ from typing import Protocol
 
 from orysys.domain.events import ActivityEvent
 from orysys.domain.identity import Principal
+from orysys.domain.security import RateLimitDecision
 from orysys.domain.tools import ToolRequest, ToolResult, ToolRunContext
 
 
@@ -10,13 +11,8 @@ class IdentityVerifier(Protocol):
     async def verify(self, token: str) -> Principal: ...
 
 
-class LimitDecision(Protocol):
-    allowed: bool
-    retry_after_seconds: int | None
-
-
 class RateLimiter(Protocol):
-    async def consume(self, subject: str, cost: int = 1) -> LimitDecision: ...
+    async def consume(self, subject: str, cost: int = 1) -> RateLimitDecision: ...
 
 
 class ToolGateway(Protocol):

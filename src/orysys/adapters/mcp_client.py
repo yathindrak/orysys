@@ -5,10 +5,19 @@ from mcp import Client
 from mcp.types import TextContent
 
 from orysys.domain.errors import ProviderUnavailable
+from orysys.security.validation import validate_outbound_url
 
 
 class McpDirectoryClient:
-    def __init__(self, server: object | str, *, timeout_seconds: float = 5.0) -> None:
+    def __init__(
+        self,
+        server: object | str,
+        *,
+        timeout_seconds: float = 5.0,
+        allowed_hosts: frozenset[str] = frozenset({"127.0.0.1", "localhost"}),
+    ) -> None:
+        if isinstance(server, str):
+            validate_outbound_url(server, allowed_hosts)
         self._server = server
         self._timeout = timeout_seconds
 

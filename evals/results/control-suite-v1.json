@@ -1,0 +1,23 @@
+{
+  "cases": [
+    {
+      "id": "control-character",
+      "passed": true
+    },
+    {
+      "id": "credential-exfiltration",
+      "passed": true
+    },
+    {
+      "id": "outbound-allowlist",
+      "passed": true
+    },
+    {
+      "id": "token-bucket",
+      "passed": true
+    }
+  ],
+  "passed": 4,
+  "suite": "control-suite-v1",
+  "total": 4
+}

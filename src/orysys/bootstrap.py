@@ -126,7 +126,16 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
                 [
                     KnowledgeSearchTool(retriever),
                     IncidentAnalyticsTool(),
-                    McpReadTool(McpDirectoryClient(settings.mcp_server_url)),
+                    McpReadTool(
+                        McpDirectoryClient(
+                            settings.mcp_server_url,
+                            allowed_hosts=frozenset(
+                                item.strip()
+                                for item in settings.allowed_outbound_hosts.split(",")
+                                if item.strip()
+                            ),
+                        )
+                    ),
                 ],
                 telemetry=telemetry,
             )

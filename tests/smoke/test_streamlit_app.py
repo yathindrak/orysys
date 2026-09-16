@@ -28,4 +28,7 @@ def test_streamlit_chat_shell_renders_without_custom_html(monkeypatch: MonkeyPat
     assert not app.exception
     assert [item.value for item in app.title] == ["✦ Orysys"]
     assert len(app.chat_input) == 1
-    assert [item.label for item in app.button] == ["New conversation"]
+    assert [item.label for item in app.button] == [
+        "New conversation",
+        "Request restart approval",
+    ]

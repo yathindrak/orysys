@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     pinecone_index: str | None = Field(default=None, validation_alias="PINECONE_INDEX")
     database_url: SecretStr | None = Field(default=None, validation_alias="DATABASE_URL")
     redis_url: SecretStr | None = Field(default=None, validation_alias="REDIS_URL")
+    upstash_redis_rest_url: str | None = Field(
+        default=None, validation_alias="UPSTASH_REDIS_REST_URL"
+    )
+    upstash_redis_rest_token: SecretStr | None = Field(
+        default=None, validation_alias="UPSTASH_REDIS_REST_TOKEN"
+    )
+    rate_limit_capacity: int = Field(default=30, ge=1, le=10_000)
+    rate_limit_refill_per_second: float = Field(default=0.5, gt=0, le=1_000)
+    allowed_outbound_hosts: str = "127.0.0.1,localhost"
     langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
     langsmith_project: str = Field(
         default="orysys-development", validation_alias="LANGSMITH_PROJECT"

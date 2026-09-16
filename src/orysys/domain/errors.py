@@ -27,6 +27,21 @@ class AuthenticationUnavailable(OrysysError):
         )
 
 
+class RateLimitExceeded(OrysysError):
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("rate_limit_exceeded", "Too many requests. Please retry later.")
+        self.retry_after_seconds = max(1, retry_after_seconds)
+
+
+class RateLimitUnavailable(OrysysError):
+    def __init__(self) -> None:
+        super().__init__(
+            "rate_limit_unavailable",
+            "Request limiting is temporarily unavailable.",
+            retryable=True,
+        )
+
+
 class ProviderUnavailable(OrysysError):
     def __init__(self, provider: str) -> None:
         super().__init__(

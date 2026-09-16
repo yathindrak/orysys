@@ -109,6 +109,9 @@ The API exposes:
 - `POST /v1/conversations/{id}/messages` to stream ordered SSE activity and answer events.
 - `GET /v1/tools` and `POST /v1/tools/{name}/execute` for role-filtered, validated tools;
 - `POST /v1/memories/proposals`, confirmation, listing, and deletion endpoints.
+- `POST /v1/actions/proposals` and the decision endpoint for one-time, administrator-
+  bound approval of a simulated restart;
+- `POST /v1/feedback` and the administrator review endpoint for trace-linked feedback.
 
 When `ORYSYS_USE_FAKE_ADAPTERS=false` and `DATABASE_URL` is configured, conversations,
 rolling summaries, long-term memories, audits, and LangGraph checkpoints use PostgreSQL
@@ -121,6 +124,37 @@ uv run alembic upgrade head
 LangGraph owns its checkpoint tables through its own `setup()` migrations; Alembic owns
 only Orysys application tables. Checkpoints use a no-pickle serializer with an explicit
 allow-list of project state types.
+
+Start the local PostgreSQL and Redis dependencies with:
+
+```bash
+docker compose up -d postgres redis
+```
+
+Production requires a shared Redis limiter, configured with either `REDIS_URL` or the
+Upstash REST URL/token. The token bucket is keyed by verified tenant and subject.
+
+## Human approval and feedback
+
+Administrators can request a simulated service restart from the Streamlit sidebar. The
+server persists an action hash and hashed, expiring, one-time approval token before the
+UI offers approve/deny controls. Approval remains requester- and tenant-bound across an
+API restart; denial, expiry, replay, and identity mismatch do not execute the action.
+
+Chat responses expose thumbs feedback. Feedback is idempotent per owner/run and records
+the trace, model, prompt, corpus, and route versions. It does not change prompts or
+become evaluation data until an administrator reviews it. Export reviewed examples with:
+
+```bash
+uv run python -m orysys.feedback.export
+uv run python -m orysys.feedback.export --langsmith-dataset orysys-reviewed
+```
+
+Run the deterministic security-control evaluation with:
+
+```bash
+uv run python -m orysys.evals.controls
+```
 
 ## Authorized tools and MCP
 
@@ -193,6 +227,7 @@ provider SDKs remain in adapters. See:
 - [`docs/architecture-plan.md`](docs/architecture-plan.md)
 - [`docs/implementation-plan.md`](docs/implementation-plan.md)
 - [`docs/requirements-traceability.md`](docs/requirements-traceability.md)
+- [`docs/threat-model.md`](docs/threat-model.md)
 - [`docs/adrs/README.md`](docs/adrs/README.md)
 
 ## Current scope

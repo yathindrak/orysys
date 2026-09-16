@@ -82,6 +82,7 @@ def _response_stream(
     validations: list[ValidationItem],
 ) -> Iterator[str]:
     for event in events:
+        st.session_state.active_run_id = event.run_id
         activity: ActivityItem | None = activity_item(event)
         if activity is not None:
             render_activity_item(status, activity)
@@ -117,10 +118,57 @@ with st.sidebar:
         st.session_state.conversation_id = conversation.conversation_id
         st.session_state.messages = []
         st.rerun()
+    with st.expander("Admin action"):
+        action_target = st.text_input("Service", value="search-api")
+        action_reason = st.text_input("Reason", value="Assessment demonstration")
+        if st.button("Request restart approval", width="stretch"):
+            try:
+                st.session_state.approval_ticket = api.propose_action(
+                    target=action_target,
+                    reason=action_reason,
+                )
+            except Exception:
+                st.error("The approval request was rejected.")
+        ticket = st.session_state.get("approval_ticket")
+        if ticket is not None:
+            st.warning("This simulated restart requires your explicit decision.")
+            approve_column, deny_column = st.columns(2)
+            if approve_column.button("Approve", type="primary", width="stretch"):
+                try:
+                    api.decide_action(
+                        ticket.proposal.proposal_id,
+                        approval_token=ticket.approval_token,
+                        confirm=True,
+                    )
+                    st.success("Approved and simulated.")
+                    del st.session_state.approval_ticket
+                except Exception:
+                    st.error("Approval failed or expired.")
+            if deny_column.button("Deny", width="stretch"):
+                try:
+                    api.decide_action(
+                        ticket.proposal.proposal_id,
+                        approval_token=ticket.approval_token,
+                        confirm=False,
+                    )
+                    st.info("Denied. No action was taken.")
+                    del st.session_state.approval_ticket
+                except Exception:
+                    st.error("Denial failed or expired.")
 
 for message in messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+        run_id = message.get("run_id")
+        if message["role"] == "assistant" and run_id:
+            selection = st.feedback("thumbs", key=f"feedback-{run_id}")
+            feedback_key = f"feedback-sent-{run_id}"
+            if selection is not None and not st.session_state.get(feedback_key):
+                try:
+                    api.submit_feedback(run_id, 1 if selection == 1 else -1)
+                    st.session_state[feedback_key] = True
+                except Exception:
+                    st.error("Feedback could not be saved.")
 
 if prompt := st.chat_input("Ask about authorized policies, systems, or incidents"):
     messages.append({"role": "user", "content": prompt})
@@ -148,4 +196,11 @@ if prompt := st.chat_input("Ask about authorized policies, systems, or incidents
             activity.update(label="Failed", state="error", expanded=True)
         render_validation(validation_items)
         render_evidence(evidence_items)
-    messages.append({"role": "assistant", "content": answer_text})
+    messages.append(
+        {
+            "role": "assistant",
+            "content": answer_text,
+            "run_id": str(st.session_state.get("active_run_id", "")),
+        }
+    )
+    st.rerun()
