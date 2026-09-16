@@ -21,6 +21,9 @@ def build_direct_graph(
         _traced("understand_and_plan", nodes.understand_and_plan, telemetry),
     )
     builder.add_node("retrieve", _traced("retrieve", nodes.retrieve, telemetry))
+    builder.add_node(
+        "enrich_with_mcp", _traced("enrich_with_mcp", nodes.enrich_with_mcp, telemetry)
+    )
     builder.add_node("compose_answer", _traced("compose_answer", nodes.compose_answer, telemetry))
     builder.add_node(
         "validate_answer", _traced("validate_answer", nodes.validate_answer, telemetry)
@@ -31,7 +34,8 @@ def build_direct_graph(
     builder.add_edge(START, "input_policy")
     builder.add_edge("input_policy", "understand_and_plan")
     builder.add_edge("understand_and_plan", "retrieve")
-    builder.add_edge("retrieve", "compose_answer")
+    builder.add_edge("retrieve", "enrich_with_mcp")
+    builder.add_edge("enrich_with_mcp", "compose_answer")
     builder.add_conditional_edges(
         "compose_answer",
         route_after_compose,

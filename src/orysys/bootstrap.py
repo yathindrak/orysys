@@ -112,12 +112,26 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
                     )
                 )
                 await checkpointer.setup()
+            mcp_client = McpDirectoryClient(
+                settings.mcp_server_url,
+                allowed_hosts=frozenset(
+                    item.strip()
+                    for item in settings.allowed_outbound_hosts.split(",")
+                    if item.strip()
+                ),
+                allowed_insecure_hosts=frozenset(
+                    item.strip()
+                    for item in settings.allowed_insecure_outbound_hosts.split(",")
+                    if item.strip()
+                ),
+            )
             direct = DirectAssistantRuntime(
                 chat_model=chat,
                 knowledge_index=retriever,
                 search_options=SearchOptions(limit=12, candidate_count=28, alpha=0.5),
                 telemetry=telemetry,
                 checkpointer=checkpointer,
+                mcp_client=mcp_client,
             )
             research = ResearchAssistantRuntime(
                 planner=ModelResearchPlanner(chat),
@@ -132,21 +146,7 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
                 [
                     KnowledgeSearchTool(retriever),
                     IncidentAnalyticsTool(),
-                    McpReadTool(
-                        McpDirectoryClient(
-                            settings.mcp_server_url,
-                            allowed_hosts=frozenset(
-                                item.strip()
-                                for item in settings.allowed_outbound_hosts.split(",")
-                                if item.strip()
-                            ),
-                            allowed_insecure_hosts=frozenset(
-                                item.strip()
-                                for item in settings.allowed_insecure_outbound_hosts.split(",")
-                                if item.strip()
-                            ),
-                        )
-                    ),
+                    McpReadTool(mcp_client),
                 ],
                 telemetry=telemetry,
             )

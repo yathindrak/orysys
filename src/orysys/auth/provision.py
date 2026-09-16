@@ -56,6 +56,7 @@ async def provision(settings: Settings) -> dict[str, object]:
             realm_response.raise_for_status()
 
         api_client_id = await _client_uuid(client, headers, API_CLIENT)
+        await _ensure_profile_attributes(client, headers)
         created_users: list[str] = []
         for username, role, clearance, departments in (
             ("viewer", "viewer", 1, ["payments"]),
@@ -103,6 +104,49 @@ def _hosted_realm(client_secret: str) -> dict[str, Any]:
     return representation
 
 
+async def _ensure_profile_attributes(client: httpx2.AsyncClient, headers: dict[str, str]) -> None:
+    # The API maps tenant_id/departments/clearance from user attributes into tokens.
+    # If the realm user profile does not declare them, Keycloak silently strips them
+    # on update and every login ends in a 401 at the API. Keep them admin-only so
+    # users cannot edit their own access claims.
+    admin_only = {"view": ["admin"], "edit": ["admin"]}
+    required = [
+        {
+            "name": "tenant_id",
+            "displayName": "Tenant ID",
+            "validations": {"length": {"min": 1}},
+            "permissions": admin_only,
+            "multivalued": False,
+            "annotations": {},
+        },
+        {
+            "name": "departments",
+            "displayName": "Departments",
+            "permissions": admin_only,
+            "multivalued": True,
+            "annotations": {},
+        },
+        {
+            "name": "clearance",
+            "displayName": "Clearance",
+            "validations": {"integer": {"min": 0, "max": 10}},
+            "permissions": admin_only,
+            "multivalued": False,
+            "annotations": {},
+        },
+    ]
+    response = await client.get(f"/admin/realms/{REALM}/users/profile", headers=headers)
+    response.raise_for_status()
+    profile = response.json()
+    have = {item.get("name") for item in profile.get("attributes", [])}
+    missing = [item for item in required if item["name"] not in have]
+    if not missing:
+        return
+    profile.setdefault("attributes", []).extend(missing)
+    update = await client.put(f"/admin/realms/{REALM}/users/profile", headers=headers, json=profile)
+    update.raise_for_status()
+
+
 async def _client_uuid(client: httpx2.AsyncClient, headers: dict[str, str], client_id: str) -> str:
     response = await client.get(
         f"/admin/realms/{REALM}/clients", headers=headers, params={"clientId": client_id}
@@ -130,8 +174,23 @@ async def _ensure_user(
     )
     search.raise_for_status()
     matches = search.json()
+    attributes = {
+        "tenant_id": ["commercial-bank"],
+        "departments": departments,
+        "clearance": [str(clearance)],
+    }
     if matches:
-        return str(matches[0]["id"]), False
+        user_id = str(matches[0]["id"])
+        # Existing users may predate the required claims (tenant_id, departments,
+        # clearance). Without them the API verifier rejects their tokens with 401,
+        # so always reconcile attributes instead of only setting them on create.
+        update = await client.put(
+            f"/admin/realms/{REALM}/users/{user_id}",
+            headers=headers,
+            json={"attributes": attributes},
+        )
+        update.raise_for_status()
+        return user_id, False
     response = await client.post(
         f"/admin/realms/{REALM}/users",
         headers=headers,

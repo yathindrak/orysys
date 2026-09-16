@@ -48,6 +48,12 @@ class OrysysApiClient:
                 if line.startswith("data: "):
                     yield ActivityEvent.model_validate(json.loads(line[6:]))
 
+    def list_tools(self) -> tuple[str, ...]:
+        response = self._client.get("/v1/tools", headers=self._headers)
+        response.raise_for_status()
+        tools = response.json().get("tools", [])
+        return tuple(str(item) for item in tools) if isinstance(tools, list) else ()
+
     def propose_action(self, *, target: str, reason: str) -> ApprovalTicket:
         response = self._client.post(
             "/v1/actions/proposals",

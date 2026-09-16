@@ -81,6 +81,7 @@ def test_direct_graph_has_explicit_reviewable_nodes() -> None:
         "input_policy",
         "understand_and_plan",
         "retrieve",
+        "enrich_with_mcp",
         "compose_answer",
         "validate_answer",
         "repair_once",

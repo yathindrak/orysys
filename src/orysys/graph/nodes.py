@@ -5,14 +5,19 @@ from typing import cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from orysys.domain.events import ActivityEvent, EventType
-from orysys.domain.evidence import Claim, GroundedAnswer
-from orysys.domain.policy import derive_access_scope
+from orysys.domain.evidence import Claim, Evidence, GroundedAnswer
+from orysys.domain.policy import MCP_READ, derive_access_scope
 from orysys.domain.validation import ValidationResult, validate_answer_citations
 from orysys.graph.prompts import SYSTEM_PROMPT, answer_prompt, repair_prompt
 from orysys.graph.state import AssistantState
 from orysys.observability import get_logger, redact
 from orysys.ports.models import ChatModel, MessageRole, ModelMessage, ModelRequest
 from orysys.ports.retrieval import KnowledgeIndex, SearchOptions
+from orysys.tools.mcp_enrichment import (
+    McpDirectoryCaller,
+    extract_mcp_lookups,
+    mcp_record_to_evidence,
+)
 
 _SAFE_SUMMARY = "I could not produce a sufficiently supported answer from the authorized evidence."
 
@@ -32,10 +37,12 @@ class DirectGraphNodes:
         chat_model: ChatModel,
         knowledge_index: KnowledgeIndex,
         search_options: SearchOptions | None = None,
+        mcp_client: McpDirectoryCaller | None = None,
     ) -> None:
         self._chat_model = chat_model
         self._knowledge_index = knowledge_index
         self._search_options = search_options or SearchOptions()
+        self._mcp_client = mcp_client
         self._logger = get_logger()
 
     async def input_policy(self, state: AssistantState) -> AssistantState:
@@ -110,6 +117,126 @@ class DirectGraphNodes:
                     {"evidence_count": len(result.evidence), "degraded": result.degraded},
                 ),
                 (EventType.NODE_COMPLETED, "retrieve", {}),
+                offset=len(events),
+            ),
+        }
+
+    async def enrich_with_mcp(self, state: AssistantState) -> AssistantState:
+        """Deterministically enrich retrieval evidence with MCP directory records.
+
+        Only exact allow-listed IDs from the user message trigger a lookup,
+        at most MAX calls, and only when the verified principal holds
+        ``mcp.read``. Failures degrade to retrieval-only evidence.
+        """
+
+        base_events = self._events(
+            state,
+            (EventType.NODE_STARTED, "enrich_with_mcp", {}),
+        )
+        lookups = extract_mcp_lookups(state["request"].message)
+        if not lookups or self._mcp_client is None:
+            return {
+                "events": base_events
+                + self._events(
+                    state,
+                    (
+                        EventType.NODE_COMPLETED,
+                        "enrich_with_mcp",
+                        {"mcp_calls": 0},
+                    ),
+                    offset=len(base_events),
+                ),
+            }
+        if MCP_READ not in state["access_scope"].allowed_tools:
+            denied_specs: tuple[tuple[EventType, str | None, dict[str, object]], ...] = tuple(
+                (EventType.TOOL_DENIED, "enrich_with_mcp", {"tool": "mcp.read"}) for _ in lookups
+            )
+            denied = self._events(
+                state,
+                *denied_specs,
+                offset=len(base_events),
+            )
+            return {
+                "events": denied
+                + self._events(
+                    state,
+                    (
+                        EventType.NODE_COMPLETED,
+                        "enrich_with_mcp",
+                        {"mcp_calls": 0, "denied": True},
+                    ),
+                    offset=len(base_events) + len(denied),
+                ),
+            }
+        enriched: list[Evidence] = list(state.get("evidence", ()))
+        tool_events: list[tuple[EventType, str | None, dict[str, object]]] = []
+        for lookup in lookups:
+            tool_events.append(
+                (
+                    EventType.TOOL_REQUESTED,
+                    "enrich_with_mcp",
+                    {"tool": "mcp.read", "operation": lookup.operation},
+                )
+            )
+            try:
+                record = await self._mcp_client.call(lookup.operation, lookup.identifier)
+            except Exception as error:
+                self._logger.warning(
+                    "mcp_enrichment_failed",
+                    **redact(
+                        {
+                            "request_id": state["request"].request_id,
+                            "run_id": state["run_id"],
+                            "error_type": type(error).__name__,
+                        }
+                    ),
+                )
+                tool_events.append(
+                    (
+                        EventType.TOOL_FAILED,
+                        "enrich_with_mcp",
+                        {"tool": "mcp.read", "operation": lookup.operation},
+                    )
+                )
+                continue
+            evidence = mcp_record_to_evidence(lookup, record)
+            if evidence is None:
+                tool_events.append(
+                    (
+                        EventType.TOOL_COMPLETED,
+                        "enrich_with_mcp",
+                        {
+                            "tool": "mcp.read",
+                            "operation": lookup.operation,
+                            "found": False,
+                        },
+                    )
+                )
+                continue
+            if evidence.evidence_id not in {item.evidence_id for item in enriched}:
+                enriched.append(evidence)
+            tool_events.append(
+                (
+                    EventType.TOOL_COMPLETED,
+                    "enrich_with_mcp",
+                    {
+                        "tool": "mcp.read",
+                        "operation": lookup.operation,
+                        "found": True,
+                    },
+                )
+            )
+        events = base_events + self._events(state, *tool_events, offset=len(base_events))
+        return {
+            "evidence": tuple(enriched),
+            "events": events
+            + self._events(
+                state,
+                (
+                    EventType.NODE_COMPLETED,
+                    "enrich_with_mcp",
+                    {"mcp_calls": len(lookups)},
+                ),
                 offset=len(events),
             ),
         }

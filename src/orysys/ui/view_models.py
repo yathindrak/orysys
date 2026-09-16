@@ -36,6 +36,34 @@ def activity_item(event: ActivityEvent) -> ActivityItem | None:
     if event.type is EventType.RETRIEVAL_COMPLETED:
         count = event.public_payload.get("evidence_count", 0)
         return ActivityItem(label=f"{Icon.RETRIEVAL} Retrieved {count} authorized evidence items")
+    if event.type is EventType.TOOL_REQUESTED:
+        tool = event.public_payload.get("tool", "tool")
+        operation = event.public_payload.get("operation")
+        detail = f" `{operation}`" if isinstance(operation, str) else ""
+        return ActivityItem(label=f"Running `{tool}`{detail}")
+    if event.type is EventType.TOOL_COMPLETED:
+        tool = event.public_payload.get("tool", "tool")
+        operation = event.public_payload.get("operation")
+        detail = f" `{operation}`" if isinstance(operation, str) else ""
+        found = event.public_payload.get("found")
+        suffix = ""
+        if found is True:
+            suffix = " — record found"
+        elif found is False:
+            suffix = " — no record"
+        return ActivityItem(label=f"Completed `{tool}`{detail}{suffix}")
+    if event.type is EventType.TOOL_DENIED:
+        tool = event.public_payload.get("tool", "tool")
+        return ActivityItem(
+            label=f"{Icon.WARNING} `{tool}` not permitted for this role",
+            warning=True,
+        )
+    if event.type is EventType.TOOL_FAILED:
+        tool = event.public_payload.get("tool", "tool")
+        return ActivityItem(
+            label=f"{Icon.WARNING} `{tool}` unavailable, continued with retrieval evidence",
+            warning=True,
+        )
     if event.type is EventType.VALIDATION_COMPLETED:
         passed = event.public_payload.get("passed") is True
         icon = Icon.VALIDATION if passed else Icon.WARNING

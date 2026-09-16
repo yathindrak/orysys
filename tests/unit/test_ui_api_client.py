@@ -37,6 +37,18 @@ def test_ui_client_parses_sse_and_forwards_access_token() -> None:
     http_client.close()
 
 
+def test_ui_client_lists_server_allowed_tools() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/tools"
+        return httpx.Response(200, json={"tools": ["knowledge.search", "mcp.read"]})
+
+    http_client = httpx.Client(base_url="http://test", transport=httpx.MockTransport(handler))
+    client = OrysysApiClient("http://test", access_token="access-token", client=http_client)
+
+    assert client.list_tools() == ("knowledge.search", "mcp.read")
+    http_client.close()
+
+
 def test_ui_client_handles_approval_and_feedback() -> None:
     now = datetime.now(UTC).isoformat()
 

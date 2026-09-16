@@ -25,13 +25,17 @@ FROM python:3.13.15-slim-bookworm AS runtime
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HOME=/home/orysys
+    HOME=/home/orysys \
+    NLTK_DATA=/usr/local/share/nltk_data
 WORKDIR /app
 
 RUN groupadd --gid 10001 orysys \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin orysys
 
 COPY --from=builder --chown=orysys:orysys /app/.venv /app/.venv
+RUN mkdir -p /usr/local/share/nltk_data \
+    && /app/.venv/bin/python -m nltk.downloader -d /usr/local/share/nltk_data punkt_tab punkt stopwords \
+    && chmod -R a+r /usr/local/share/nltk_data
 COPY --chown=orysys:orysys alembic.ini ./
 COPY --chown=orysys:orysys migrations ./migrations
 COPY --chown=orysys:orysys src ./src

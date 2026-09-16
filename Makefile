@@ -11,8 +11,8 @@ verify:
 
 migrate-check:
 	docker compose up --detach --wait postgres
-	DATABASE_URL=postgresql://orysys:local-postgres-change-me@127.0.0.1:5432/orysys uv run alembic upgrade head
-	DATABASE_URL=postgresql://orysys:local-postgres-change-me@127.0.0.1:5432/orysys uv run alembic current
+	DATABASE_URL=postgresql://orysys:local-postgres-change-me@127.0.0.1:55432/orysys uv run alembic upgrade head
+	DATABASE_URL=postgresql://orysys:local-postgres-change-me@127.0.0.1:55432/orysys uv run alembic current
 
 compose-check:
 	docker compose config -q

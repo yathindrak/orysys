@@ -14,11 +14,14 @@ credential-free pilot topology:
 - Streamlit: `http://127.0.0.1:8501`
 - FastAPI readiness: `http://127.0.0.1:8000/health/ready`
 - MCP Streamable HTTP: `http://127.0.0.1:8001/mcp`
-- PostgreSQL and Redis bound to loopback only
+- PostgreSQL (`55432`) and Redis (`6379`) bound to loopback only
 
 The default topology uses deterministic fake model/retrieval adapters and does not pass
 provider credentials from `.env` into containers. PostgreSQL and Redis still start so
 migrations, health checks, and operational topology match the live deployment shape.
+
+The project maps PostgreSQL to host port 55432 so it does not conflict with a standard
+local PostgreSQL installation on 5432. Containers continue to use port 5432 internally.
 
 Inspect logs and stop the pilot with:
 
@@ -64,8 +67,8 @@ empty database, downgrade to base, and re-upgrade to head.
 
 ## Troubleshooting
 
-- If a port is occupied, stop the local process using 5432, 6379, 8000, 8001, or 8501,
-  or change the loopback mapping in `compose.yaml`.
+- If port 55432 or another service port is occupied, stop the conflicting local process
+  or change its loopback mapping in `compose.yaml`.
 - If a service is unhealthy, run `docker compose ps` and `make logs`; the API waits for
   PostgreSQL, Redis, and MCP before starting.
 - If the API exits during live startup, verify the required Cloudflare, Pinecone, and

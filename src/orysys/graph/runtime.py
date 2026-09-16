@@ -39,11 +39,13 @@ class DirectAssistantRuntime:
         search_options: SearchOptions | None = None,
         telemetry: Telemetry | None = None,
         checkpointer: Any | None = None,
+        mcp_client: Any | None = None,
     ) -> None:
         nodes = DirectGraphNodes(
             chat_model=chat_model,
             knowledge_index=knowledge_index,
             search_options=search_options,
+            mcp_client=mcp_client,
         )
         self._telemetry = telemetry or NoopTelemetry()
         self._graph = build_direct_graph(nodes, self._telemetry, checkpointer=checkpointer)

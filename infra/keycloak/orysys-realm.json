@@ -1,7 +1,7 @@
 {
   "realm": "orysys",
   "enabled": true,
-  "displayName": "Orysys Assessment",
+  "displayName": "Orysys",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
