@@ -15,9 +15,10 @@ class McpDirectoryClient:
         *,
         timeout_seconds: float = 5.0,
         allowed_hosts: frozenset[str] = frozenset({"127.0.0.1", "localhost"}),
+        allowed_insecure_hosts: frozenset[str] = frozenset({"127.0.0.1", "localhost"}),
     ) -> None:
         if isinstance(server, str):
-            validate_outbound_url(server, allowed_hosts)
+            validate_outbound_url(server, allowed_hosts, allowed_insecure_hosts)
         self._server = server
         self._timeout = timeout_seconds
 

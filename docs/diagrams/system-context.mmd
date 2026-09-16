@@ -1,15 +1,20 @@
 flowchart LR
     User[Employee] --> UI[Streamlit UI]
+    UI -->|OIDC login| Keycloak[Skycloak or local Keycloak]
     UI -->|Bearer token + SSE| API[FastAPI API]
     API --> Policy[Identity, rate limit, input policy]
     Policy --> Runtime[Assistant runtime]
     Runtime --> Graph[Explicit LangGraph workflow]
     Graph --> Retrieval[Scoped hybrid retrieval]
     Graph --> Tools[Authorized tool gateway]
+    Graph --> Approval[Interrupt and approval workflow]
     Graph --> Validation[Evidence and response validation]
+    Graph --> Cloudflare[Cloudflare Workers AI]
     Retrieval --> Pinecone[(Pinecone)]
     Tools --> MCP[MCP sidecar]
-    Graph --> Postgres[(PostgreSQL checkpoints)]
+    Graph --> Postgres[(PostgreSQL checkpoints and memory)]
+    API --> Feedback[(Reviewed feedback)]
+    Approval --> Postgres
+    Feedback --> Postgres
     Policy --> Redis[(Redis token bucket)]
     Graph --> LangSmith[LangSmith traces]
-

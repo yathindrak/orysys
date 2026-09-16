@@ -31,6 +31,17 @@ profile.
 Copy `.env.example` to `.env` only for local development. Never commit tokens,
 credentials, customer content, or production traces.
 
+For the complete credential-free container pilot:
+
+```bash
+make pilot
+```
+
+Open `http://127.0.0.1:8501`. The command builds the non-root runtime image, migrates
+the local PostgreSQL database, and waits for PostgreSQL, Redis, MCP, API, and Streamlit
+health checks. See [`docs/operations.md`](docs/operations.md) for live-provider startup
+and troubleshooting.
+
 ## Corpus ingestion
 
 Run the complete pipeline with deterministic local adapters:
@@ -230,6 +241,7 @@ provider SDKs remain in adapters. See:
 - [`docs/requirements-traceability.md`](docs/requirements-traceability.md)
 - [`docs/threat-model.md`](docs/threat-model.md)
 - [`docs/reliability.md`](docs/reliability.md)
+- [`docs/operations.md`](docs/operations.md)
 - [`docs/adrs/README.md`](docs/adrs/README.md)
 
 ## Current scope
@@ -266,6 +278,32 @@ Implemented in the baseline:
 - official MCP v2 in-process contract tests and Streamable HTTP server entrypoint;
 - PostgreSQL conversation history, rolling context summaries, and LangGraph checkpoints;
 - explicit memory proposal/confirmation/recall/expiry/deletion with audit events.
+- Redis/Upstash token-bucket rate limiting, outbound allow-lists, and adversarial controls;
+- restart-safe administrator approval with denial, expiry, replay, and identity checks;
+- reviewed, trace-linked feedback export and deterministic control evaluations;
+- classified provider retries, encoder fallbacks, child deadlines, and load measurements;
+- non-root runtime image, full local Compose topology, migration CI, and supply-chain gates.
+
+## Assumptions, trade-offs, and known limitations
+
+- The corpus and MCP records are synthetic. Production connectors, OCR, and customer
+  migration are intentionally outside v1.
+- Pinecone is the only vector store and Cloudflare Workers AI is the default model and
+  embedding provider. Provider seams exist for testing and isolation, not for an
+  unmaintainable matrix of production vendors.
+- The Streamlit UI favors transparent activity, evidence, and controls over custom
+  frontend polish.
+- The research path is bounded to one targeted retry and explicit model/child/deadline
+  budgets. It may return an incomplete answer instead of expanding indefinitely.
+- The impactful action is deliberately simulated. Approval security and persistence are
+  real, but the assessment never restarts an external production service.
+- Feedback never changes prompts automatically. An administrator must review it before
+  dataset export.
+- The credential-free Compose pilot proves packaging and service wiring with fake model
+  and retrieval adapters. Live-provider quality, latency, cost, and LangSmith evidence
+  require an authorized run with configured accounts.
+- Readiness currently proves process/configuration health. A future production rollout
+  should add provider-specific degraded/readiness telemetry and deployment-level probes.
 
 The traceability matrix remains the authority for implementation and verification
 status. A requirement is not considered verified merely because its interface exists.

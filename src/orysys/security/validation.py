@@ -23,11 +23,15 @@ def validate_user_message(message: str) -> None:
         )
 
 
-def validate_outbound_url(url: str, allowed_hosts: frozenset[str]) -> None:
+def validate_outbound_url(
+    url: str,
+    allowed_hosts: frozenset[str],
+    allowed_insecure_hosts: frozenset[str] = frozenset({"127.0.0.1", "localhost"}),
+) -> None:
     parsed = urlparse(url)
     if not parsed.hostname or (
         parsed.scheme != "https"
-        and not (parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"})
+        and not (parsed.scheme == "http" and parsed.hostname in allowed_insecure_hosts)
     ):
         raise ValueError("outbound URL must use HTTPS except on loopback")
     if parsed.username or parsed.password or parsed.hostname not in allowed_hosts:

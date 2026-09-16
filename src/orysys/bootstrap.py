@@ -140,6 +140,11 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
                                 for item in settings.allowed_outbound_hosts.split(",")
                                 if item.strip()
                             ),
+                            allowed_insecure_hosts=frozenset(
+                                item.strip()
+                                for item in settings.allowed_insecure_outbound_hosts.split(",")
+                                if item.strip()
+                            ),
                         )
                     ),
                 ],

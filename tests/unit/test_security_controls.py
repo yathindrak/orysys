@@ -24,3 +24,15 @@ def test_outbound_url_must_use_https_and_allowlisted_host() -> None:
         validate_outbound_url("http://api.example.test/v1", hosts)
     with pytest.raises(ValueError):
         validate_outbound_url("https://attacker.example/v1", hosts)
+
+
+def test_internal_http_requires_separate_explicit_allowlist() -> None:
+    hosts = frozenset({"mcp-server"})
+    with pytest.raises(ValueError):
+        validate_outbound_url("http://mcp-server:8001/mcp", hosts)
+
+    validate_outbound_url(
+        "http://mcp-server:8001/mcp",
+        hosts,
+        frozenset({"mcp-server"}),
+    )

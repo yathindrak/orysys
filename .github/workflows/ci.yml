@@ -15,16 +15,93 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - name: Install Python
-        run: uv python install 3.13
+          python-version: "3.13"
       - name: Sync locked environment
         run: uv sync --locked --all-groups
-      - name: Lint
-        run: uv run ruff check .
       - name: Format
         run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
       - name: Type check
-        run: uv run mypy src tests
+        run: uv run mypy src
       - name: Test
         run: uv run pytest
+      - name: Deterministic control evaluation
+        run: uv run python -m orysys.evals.controls --output /tmp/control-suite.json
+      - name: Local load smoke
+        run: uv run python -m orysys.evals.reliability --output /tmp/load-smoke.json
 
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_DB: orysys
+          POSTGRES_USER: orysys
+          POSTGRES_PASSWORD: ci-postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orysys -d orysys"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://orysys:ci-postgres@127.0.0.1:5432/orysys
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --all-groups
+      - name: Upgrade from empty database
+        run: uv run alembic upgrade head
+      - name: Verify current head
+        run: test "$(uv run alembic current 2>/dev/null)" = "$(uv run alembic heads 2>/dev/null)"
+      - name: Downgrade and re-upgrade
+        run: |
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --all-groups
+      - name: Dependency vulnerability scan
+        run: |
+          uv export --locked --no-dev --no-emit-project --output-file /tmp/requirements.txt
+          uvx pip-audit --requirement /tmp/requirements.txt
+      - name: Dependency license inventory
+        run: uv run --with pip-licenses pip-licenses --format=markdown
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose config -q
+      - name: Build runtime image
+        run: docker build --target runtime --tag orysys:local .
+      - name: Start pilot topology
+        run: docker compose up --detach --wait postgres redis mcp-server api ui
+      - name: Probe services
+        run: |
+          curl --fail http://127.0.0.1:8000/health/ready
+          curl --fail http://127.0.0.1:8501/_stcore/health
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop pilot topology
+        if: always()
+        run: docker compose down --volumes
