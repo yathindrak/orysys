@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -55,6 +56,33 @@ class RetryOneWorker:
         )
 
 
+class AlwaysFailOneWorker(RetryOneWorker):
+    async def analyze(self, objective: str, batch: ResearchBatch) -> WorkerOutcome:
+        if batch.batch_id == "batch-02":
+            self.calls.append((batch.batch_id, batch.attempt))
+            raise RuntimeError("permanent isolated failure")
+        return await super().analyze(objective, batch)
+
+
+class SlowWorker:
+    async def analyze(self, objective: str, batch: ResearchBatch) -> WorkerOutcome:
+        del objective, batch
+        await asyncio.sleep(1)
+        raise AssertionError("deadline did not cancel slow worker")
+
+
+class ShortDeadlinePlanner(FixedPlanner):
+    async def plan(self, question: str) -> ResearchPlan:
+        plan = await super().plan(question)
+        return plan.model_copy(
+            update={
+                "budget": plan.budget.model_copy(
+                    update={"deadline": datetime.now(UTC) + timedelta(milliseconds=10)}
+                )
+            }
+        )
+
+
 def _evidence(index: int) -> Evidence:
     return Evidence(
         evidence_id=f"ev-{index}",
@@ -99,3 +127,56 @@ async def test_research_fans_out_reduces_and_retries_one_failed_batch() -> None:
     assert any(event.type is EventType.RESEARCH_RECURSION for event in result.events)
     assert [event.sequence for event in result.events] == list(range(len(result.events)))
     assert result.events[-1].type is EventType.RUN_COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_permanent_child_failure_does_not_cancel_successful_sibling() -> None:
+    worker = AlwaysFailOneWorker()
+    runtime = ResearchAssistantRuntime(
+        planner=FixedPlanner(),
+        worker=worker,
+        knowledge_index=InMemoryKnowledgeIndex([_evidence(index) for index in range(4)]),
+    )
+
+    result = await runtime.run(
+        AssistantRequest(
+            request_id="request-partial",
+            thread_id="thread-partial",
+            message="Compare all annual incidents and identify recurring causes.",
+        ),
+        Principal(
+            subject="analyst-1",
+            tenant_id="tenant-1",
+            roles=frozenset({Role.ANALYST}),
+        ),
+    )
+
+    assert result.answer.incomplete
+    assert len(result.answer.claims) == 1
+    assert any(event.public_payload.get("failed_batches") == 1 for event in result.events)
+
+
+@pytest.mark.asyncio
+async def test_research_child_is_cancelled_at_plan_deadline() -> None:
+    runtime = ResearchAssistantRuntime(
+        planner=ShortDeadlinePlanner(),
+        worker=SlowWorker(),
+        knowledge_index=InMemoryKnowledgeIndex([_evidence(1)]),
+        deadline_seconds=1,
+    )
+
+    result = await runtime.run(
+        AssistantRequest(
+            request_id="request-deadline",
+            thread_id="thread-deadline",
+            message="Research all annual incidents.",
+        ),
+        Principal(
+            subject="analyst-1",
+            tenant_id="tenant-1",
+            roles=frozenset({Role.ANALYST}),
+        ),
+    )
+
+    assert result.answer.incomplete
+    assert not result.answer.claims

@@ -14,6 +14,12 @@ from orysys.ports.ingestion import SparseVector
 from orysys.ports.retrieval import Reranker, SearchOptions
 
 
+class FailingEmbeddingModel:
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        del texts
+        raise RuntimeError("dense provider unavailable")
+
+
 class QuerySparseEncoder:
     def fit(self, texts: Sequence[str]) -> None:
         del texts
@@ -28,6 +34,12 @@ class QuerySparseEncoder:
 
     def dump(self, path: Path) -> None:
         del path
+
+
+class FailingSparseEncoder(QuerySparseEncoder):
+    def encode_query(self, text: str) -> SparseVector:
+        del text
+        raise RuntimeError("sparse encoder unavailable")
 
 
 class RecordingIndex:
@@ -114,3 +126,48 @@ async def test_reranker_failure_preserves_hybrid_order() -> None:
 
     assert result.degraded
     assert result.evidence[0].evidence_id == "record-1"
+
+
+@pytest.mark.asyncio
+async def test_dense_failure_uses_sparse_only_and_marks_degraded() -> None:
+    index = RecordingIndex()
+    retriever = PineconeKnowledgeIndex(
+        client=cast(AsyncPinecone, RecordingClient()),
+        index=cast(AsyncIndex, index),
+        embedding_model=FailingEmbeddingModel(),
+        sparse_encoder=QuerySparseEncoder(),
+        reranker=IdentityReranker(),
+        expected_dimensions=2,
+    )
+
+    result = await retriever.search(
+        "payment error",
+        AccessScope(namespace="tenant-a", metadata_filter={}, allowed_tools=frozenset()),
+        SearchOptions(limit=1),
+    )
+
+    assert result.degraded
+    assert index.query_kwargs["vector"] == [0.0, 0.0]
+    assert index.query_kwargs["sparse_vector"] == {"indices": [10], "values": [2.0]}
+
+
+@pytest.mark.asyncio
+async def test_sparse_failure_uses_dense_only_and_marks_degraded() -> None:
+    index = RecordingIndex()
+    retriever = PineconeKnowledgeIndex(
+        client=cast(AsyncPinecone, RecordingClient()),
+        index=cast(AsyncIndex, index),
+        embedding_model=DeterministicEmbeddingModel(dimension=2),
+        sparse_encoder=FailingSparseEncoder(),
+        reranker=IdentityReranker(),
+    )
+
+    result = await retriever.search(
+        "payment error",
+        AccessScope(namespace="tenant-a", metadata_filter={}, allowed_tools=frozenset()),
+        SearchOptions(limit=1),
+    )
+
+    assert result.degraded
+    assert index.query_kwargs["sparse_vector"] is None
+    assert index.query_kwargs["vector"] != [0.0, 0.0]

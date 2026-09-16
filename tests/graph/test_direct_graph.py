@@ -7,10 +7,17 @@ from orysys.adapters.telemetry import NoopTelemetry
 from orysys.application.assistant import AssistantRequest
 from orysys.domain.events import EventType
 from orysys.domain.evidence import Evidence
-from orysys.domain.identity import Principal, Role
+from orysys.domain.identity import AccessScope, Principal, Role
 from orysys.graph.builder import build_direct_graph
 from orysys.graph.nodes import DirectGraphNodes
 from orysys.graph.runtime import DirectAssistantRuntime
+from orysys.ports.retrieval import SearchOptions, SearchResult
+
+
+class FailingKnowledgeIndex:
+    async def search(self, query: str, scope: AccessScope, options: SearchOptions) -> SearchResult:
+        del query, scope, options
+        raise RuntimeError("Pinecone unavailable")
 
 
 def _evidence() -> Evidence:
@@ -147,6 +154,22 @@ async def test_no_authorized_evidence_does_not_call_model() -> None:
     assert result.evidence == ()
     assert result.validations == ()
     assert model.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_retrieval_failure_returns_safe_answer_and_degraded_event() -> None:
+    model = ScriptedChatModel(_answer())
+    runtime = DirectAssistantRuntime(
+        chat_model=model,
+        knowledge_index=FailingKnowledgeIndex(),
+    )
+
+    result = await runtime.run(_request(), _principal())
+
+    assert result.answer.incomplete
+    assert not result.answer.claims
+    assert model.call_count == 0
+    assert any(event.type is EventType.RETRIEVAL_DEGRADED for event in result.events)
 
 
 @pytest.mark.asyncio

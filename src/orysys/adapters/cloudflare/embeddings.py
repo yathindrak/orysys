@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import httpx2
 from pydantic import BaseModel, ConfigDict
 
+from orysys.adapters.retry import request_with_retry
 from orysys.domain.errors import ProviderUnavailable
 
 
@@ -32,12 +33,14 @@ class CloudflareEmbeddingModel:
         gateway_id: str | None = None,
         batch_size: int = 32,
         max_concurrency: int = 3,
+        retry_attempts: int = 3,
         client: httpx2.AsyncClient | None = None,
     ) -> None:
         self._model = model
         self._expected_dimensions = expected_dimensions
         self._batch_size = batch_size
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._retry_attempts = retry_attempts
         self._owns_client = client is None
         headers = {"Authorization": f"Bearer {api_token}"}
         if gateway_id:
@@ -59,12 +62,14 @@ class CloudflareEmbeddingModel:
     async def _embed_batch(self, texts: Sequence[str]) -> list[list[float]]:
         async with self._semaphore:
             try:
-                response = await self._client.post(
-                    "/embeddings",
-                    headers=self._headers,
-                    json={"model": self._model, "input": list(texts)},
+                response = await request_with_retry(
+                    lambda: self._client.post(
+                        "/embeddings",
+                        headers=self._headers,
+                        json={"model": self._model, "input": list(texts)},
+                    ),
+                    max_attempts=self._retry_attempts,
                 )
-                response.raise_for_status()
             except httpx2.HTTPError as error:
                 raise ProviderUnavailable("Cloudflare embeddings") from error
         payload = _EmbeddingResponse.model_validate(response.json())

@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 
 from orysys.adapters.oidc import OidcIdentityVerifier
-from orysys.domain.errors import AuthenticationFailed
+from orysys.domain.errors import AuthenticationFailed, AuthenticationUnavailable
 from orysys.domain.identity import Role
 
 
@@ -110,5 +110,39 @@ async def test_oidc_rejects_tokens_without_application_client_role() -> None:
     )
 
     with pytest.raises(AuthenticationFailed):
+        await verifier.verify(token)
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oidc_provider_failure_is_authentication_unavailable() -> None:
+    issuer = "https://identity.example.test/realms/orysys"
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "sub": "user-1",
+            "iss": issuer,
+            "aud": "orysys-api",
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        },
+        private_key,
+        algorithm="RS256",
+        headers={"kid": "key-1"},
+    )
+
+    async def unavailable(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(503, request=request)
+
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(unavailable))
+    verifier = OidcIdentityVerifier(
+        issuer=issuer,
+        audience="orysys-api",
+        client_id="orysys-api",
+        client=client,
+    )
+
+    with pytest.raises(AuthenticationUnavailable):
         await verifier.verify(token)
     await client.aclose()

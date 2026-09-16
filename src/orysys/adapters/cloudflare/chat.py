@@ -1,9 +1,11 @@
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx2
 from pydantic import BaseModel, ConfigDict
 
+from orysys.adapters.retry import request_with_retry
 from orysys.domain.errors import ProviderUnavailable
 from orysys.ports.models import ModelRequest, ModelResult
 
@@ -38,10 +40,14 @@ class CloudflareChatModel:
         model: str,
         max_tokens: int,
         gateway_id: str | None = None,
+        max_concurrency: int = 4,
+        retry_attempts: int = 3,
         client: httpx2.AsyncClient | None = None,
     ) -> None:
         self._model = model
         self._max_tokens = max_tokens
+        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._retry_attempts = retry_attempts
         self._owns_client = client is None
         headers = {"Authorization": f"Bearer {api_token}"}
         if gateway_id:
@@ -64,12 +70,15 @@ class CloudflareChatModel:
                 "json_schema": request.response_schema,
             }
         try:
-            response = await self._client.post(
-                "/chat/completions", headers=self._headers, json=payload
-            )
-            response.raise_for_status()
-            parsed = _ChatResponse.model_validate(response.json())
-            choice = parsed.choices[0]
+            async with self._semaphore:
+                response = await request_with_retry(
+                    lambda: self._client.post(
+                        "/chat/completions", headers=self._headers, json=payload
+                    ),
+                    max_attempts=self._retry_attempts,
+                )
+                parsed = _ChatResponse.model_validate(response.json())
+                choice = parsed.choices[0]
         except (httpx2.HTTPError, ValueError, IndexError) as error:
             raise ProviderUnavailable("Cloudflare chat") from error
         return ModelResult(text=choice.message.content, model=parsed.model or self._model)

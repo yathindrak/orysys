@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     cloudflare_chat_max_tokens: int = Field(
         default=4096, ge=1, validation_alias="CLOUDFLARE_CHAT_MAX_TOKENS"
     )
+    cloudflare_chat_max_concurrency: int = Field(default=4, ge=1, le=32)
+    cloudflare_embedding_max_concurrency: int = Field(default=3, ge=1, le=32)
+    provider_retry_attempts: int = Field(default=3, ge=1, le=5)
+    research_max_concurrency: int = Field(default=4, ge=1, le=16)
+    research_deadline_seconds: float = Field(default=65.0, gt=0, le=600)
     pinecone_api_key: SecretStr | None = Field(default=None, validation_alias="PINECONE_API_KEY")
     pinecone_index: str | None = Field(default=None, validation_alias="PINECONE_INDEX")
     database_url: SecretStr | None = Field(default=None, validation_alias="DATABASE_URL")

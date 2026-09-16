@@ -73,6 +73,8 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
         model=settings.cloudflare_embedding_model,
         expected_dimensions=settings.cloudflare_embedding_dimensions,
         gateway_id=settings.cloudflare_ai_gateway_id,
+        max_concurrency=settings.cloudflare_embedding_max_concurrency,
+        retry_attempts=settings.provider_retry_attempts,
     )
     chat = CloudflareChatModel(
         account_id=settings.cloudflare_account_id,
@@ -80,6 +82,8 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
         model=settings.cloudflare_chat_model,
         max_tokens=settings.cloudflare_chat_max_tokens,
         gateway_id=settings.cloudflare_ai_gateway_id,
+        max_concurrency=settings.cloudflare_chat_max_concurrency,
+        retry_attempts=settings.provider_retry_attempts,
     )
     rerank_client = AsyncPinecone(api_key=settings.pinecone_api_key.get_secret_value())
     retriever = await PineconeKnowledgeIndex.connect(
@@ -121,6 +125,8 @@ async def live_assistant_runtime(settings: Settings) -> AsyncIterator[RoutingAss
                 knowledge_index=retriever,
                 telemetry=telemetry,
                 checkpointer=checkpointer,
+                max_concurrency=settings.research_max_concurrency,
+                deadline_seconds=settings.research_deadline_seconds,
             )
             tools = AuthorizedToolGateway(
                 [

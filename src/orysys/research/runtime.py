@@ -58,10 +58,12 @@ class ResearchNodes:
         planner: ResearchPlanner,
         worker: ResearchWorker,
         knowledge_index: KnowledgeIndex,
+        max_concurrency: int = 4,
     ) -> None:
         self._planner = planner
         self._worker = worker
         self._index = knowledge_index
+        self._worker_slots = asyncio.Semaphore(max_concurrency)
 
     async def plan(self, state: ResearchState) -> ResearchState:
         plan = await self._planner.plan(state["request"].message)
@@ -161,13 +163,7 @@ class ResearchNodes:
 
     async def worker(self, state: WorkerInput) -> dict[str, list[WorkerOutcome]]:
         batch = state["batch"]
-        if datetime.now(UTC) >= state["deadline"]:
-            outcome = _failed_outcome(batch, "The research deadline was reached.")
-        else:
-            try:
-                outcome = await self._worker.analyze(state["objective"], batch)
-            except Exception:
-                outcome = _failed_outcome(batch, "This research batch could not be analyzed.")
+        outcome = await self._analyze(state["objective"], batch, state["deadline"])
         return {"outcomes": [outcome]}
 
     async def reduce(self, state: ResearchState) -> ResearchState:
@@ -229,12 +225,11 @@ class ResearchNodes:
         retry_batches = retry_batches[:remaining_model_calls]
 
         async def retry(batch: ResearchBatch) -> WorkerOutcome:
-            if datetime.now(UTC) >= state["plan"].budget.deadline:
-                return _failed_outcome(batch, "The research deadline was reached.")
-            try:
-                return await self._worker.analyze(state["plan"].objective, batch)
-            except Exception:
-                return _failed_outcome(batch, "This research batch could not be analyzed.")
+            return await self._analyze(
+                state["plan"].objective,
+                batch,
+                state["plan"].budget.deadline,
+            )
 
         results = await asyncio.gather(*(retry(batch) for batch in retry_batches))
         return {
@@ -249,6 +244,24 @@ class ResearchNodes:
                 ),
             ),
         }
+
+    async def _analyze(
+        self,
+        objective: str,
+        batch: ResearchBatch,
+        deadline: datetime,
+    ) -> WorkerOutcome:
+        remaining = (deadline - datetime.now(UTC)).total_seconds()
+        if remaining <= 0:
+            return _failed_outcome(batch, "The research deadline was reached.")
+        try:
+            async with asyncio.timeout(remaining):
+                async with self._worker_slots:
+                    return await self._worker.analyze(objective, batch)
+        except TimeoutError:
+            return _failed_outcome(batch, "The research deadline was reached.")
+        except Exception:
+            return _failed_outcome(batch, "This research batch could not be analyzed.")
 
     async def compose(self, state: ResearchState) -> ResearchState:
         findings = state.get("findings", ())
@@ -374,12 +387,21 @@ class ResearchAssistantRuntime:
         knowledge_index: KnowledgeIndex,
         telemetry: Telemetry | None = None,
         checkpointer: Any | None = None,
+        max_concurrency: int = 4,
+        deadline_seconds: float = 65.0,
     ) -> None:
         self._graph = build_research_graph(
-            ResearchNodes(planner=planner, worker=worker, knowledge_index=knowledge_index),
+            ResearchNodes(
+                planner=planner,
+                worker=worker,
+                knowledge_index=knowledge_index,
+                max_concurrency=max_concurrency,
+            ),
             checkpointer=checkpointer,
         )
         self._telemetry = telemetry or NoopTelemetry()
+        self._max_concurrency = max_concurrency
+        self._deadline_seconds = deadline_seconds
 
     async def run(self, request: AssistantRequest, principal: Principal) -> AssistantRunResult:
         run_id = str(uuid4())
@@ -395,12 +417,12 @@ class ResearchAssistantRuntime:
             "orysys.research",
             {"request_id": request.request_id, "run_id": run_id, "route": "research"},
         ):
-            async with asyncio.timeout(65):
+            async with asyncio.timeout(self._deadline_seconds):
                 raw: dict[str, Any] = await self._graph.ainvoke(
                     initial,
                     {
                         **_checkpoint_config(request, principal),
-                        "max_concurrency": 4,
+                        "max_concurrency": self._max_concurrency,
                     },
                 )
         state = cast(ResearchState, raw)

@@ -34,12 +34,14 @@ class PineconeKnowledgeIndex(KnowledgeIndex):
         embedding_model: EmbeddingModel,
         sparse_encoder: SparseEncoder,
         reranker: Reranker,
+        expected_dimensions: int | None = None,
     ) -> None:
         self._client = client
         self._index = index
         self._embedding_model = embedding_model
         self._sparse_encoder = sparse_encoder
         self._reranker = reranker
+        self._expected_dimensions = expected_dimensions
 
     @classmethod
     async def connect(
@@ -73,14 +75,36 @@ class PineconeKnowledgeIndex(KnowledgeIndex):
             embedding_model=embedding_model,
             sparse_encoder=sparse_encoder,
             reranker=reranker,
+            expected_dimensions=expected_dimensions,
         )
 
     async def search(self, query: str, scope: AccessScope, options: SearchOptions) -> SearchResult:
-        dense = (await self._embedding_model.embed([query]))[0]
-        sparse = self._sparse_encoder.encode_query(query)
-        weighted_dense = [value * options.alpha for value in dense]
-        weighted_sparse = _weight_sparse(sparse, 1 - options.alpha)
-        sparse_query = weighted_sparse if options.alpha < 1 else None
+        degraded = False
+        weighted_dense: list[float]
+        sparse_query: SparseVector | None
+        try:
+            dense = (await self._embedding_model.embed([query]))[0]
+        except Exception as dense_error:
+            try:
+                sparse = self._sparse_encoder.encode_query(query)
+            except Exception as sparse_error:
+                raise ProviderUnavailable("query encoding") from sparse_error
+            if self._expected_dimensions is None:
+                raise ProviderUnavailable("dense query encoding") from dense_error
+            weighted_dense = [0.0] * self._expected_dimensions
+            sparse_query = sparse
+            degraded = True
+        else:
+            try:
+                sparse = self._sparse_encoder.encode_query(query)
+            except Exception:
+                sparse_query = None
+                weighted_dense = dense
+                degraded = True
+            else:
+                weighted_dense = [value * options.alpha for value in dense]
+                weighted_sparse = _weight_sparse(sparse, 1 - options.alpha)
+                sparse_query = weighted_sparse if options.alpha < 1 else None
         try:
             response = await self._index.query(
                 namespace=scope.namespace,
@@ -99,7 +123,6 @@ class PineconeKnowledgeIndex(KnowledgeIndex):
             for match in response.matches
             if match.id and match.metadata
         )
-        degraded = False
         try:
             ranked = await self._reranker.rerank(query, evidence, options.limit)
         except Exception:

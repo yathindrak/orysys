@@ -1,0 +1,14 @@
+{
+  "concurrency": 5,
+  "estimated_provider_cost_usd": 0.0,
+  "failures": 0,
+  "latency_ms": {
+    "max": 1.135,
+    "p50": 0.187,
+    "p95": 0.361
+  },
+  "profile": "deterministic-fake",
+  "provider_calls": 0,
+  "request_count": 25,
+  "suite": "local-load-smoke-v1"
+}

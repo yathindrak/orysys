@@ -154,6 +154,7 @@ Run the deterministic security-control evaluation with:
 
 ```bash
 uv run python -m orysys.evals.controls
+uv run python -m orysys.evals.reliability
 ```
 
 ## Authorized tools and MCP
@@ -228,6 +229,7 @@ provider SDKs remain in adapters. See:
 - [`docs/implementation-plan.md`](docs/implementation-plan.md)
 - [`docs/requirements-traceability.md`](docs/requirements-traceability.md)
 - [`docs/threat-model.md`](docs/threat-model.md)
+- [`docs/reliability.md`](docs/reliability.md)
 - [`docs/adrs/README.md`](docs/adrs/README.md)
 
 ## Current scope

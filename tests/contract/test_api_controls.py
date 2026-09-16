@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from orysys.api.app import create_app
 from orysys.config import Settings
-from orysys.domain.errors import AuthenticationFailed
+from orysys.domain.errors import AuthenticationFailed, RateLimitUnavailable
 from orysys.domain.identity import Principal, Role
 from orysys.domain.security import RateLimitDecision
 
@@ -107,6 +107,12 @@ class DenyingLimiter:
         return RateLimitDecision(allowed=False, retry_after_seconds=7, remaining=0)
 
 
+class UnavailableLimiter:
+    async def consume(self, subject: str, cost: int = 1) -> RateLimitDecision:
+        del subject, cost
+        raise RateLimitUnavailable
+
+
 def test_api_returns_429_and_retry_after_when_rate_limited() -> None:
     with _client(rate_limiter=DenyingLimiter()) as client:
         response = client.post("/v1/conversations", headers=_auth("viewer"))
@@ -114,6 +120,14 @@ def test_api_returns_429_and_retry_after_when_rate_limited() -> None:
     assert response.status_code == 429
     assert response.headers["retry-after"] == "7"
     assert response.json()["code"] == "rate_limit_exceeded"
+
+
+def test_api_fails_closed_when_shared_limiter_is_unavailable() -> None:
+    with _client(rate_limiter=UnavailableLimiter()) as client:
+        response = client.post("/v1/conversations", headers=_auth("viewer"))
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "rate_limit_unavailable"
 
 
 def test_production_rejects_fake_adapters() -> None:

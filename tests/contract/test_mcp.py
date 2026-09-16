@@ -1,7 +1,9 @@
 import pytest
 from mcp import Client
+from pytest import MonkeyPatch
 
 from orysys.adapters.mcp_client import McpDirectoryClient
+from orysys.domain.errors import ProviderUnavailable
 from orysys.mcp_server.app import mcp
 
 
@@ -30,3 +32,27 @@ async def test_mcp_adapter_maps_structured_result() -> None:
 
     assert result["found"] is True
     assert result["record"]["status"] == "resolved"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_mcp_timeout_is_mapped_to_safe_provider_failure(monkeypatch: MonkeyPatch) -> None:
+    class TimeoutClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+        async def __aenter__(self) -> "TimeoutClient":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            del args
+
+        async def call_tool(self, *args: object, **kwargs: object) -> object:
+            del args, kwargs
+            raise TimeoutError("simulated MCP timeout")
+
+    monkeypatch.setattr("orysys.adapters.mcp_client.Client", TimeoutClient)
+
+    with pytest.raises(ProviderUnavailable) as caught:
+        await McpDirectoryClient("http://127.0.0.1:8001/mcp").call("service_catalog", "payment-api")
+
+    assert caught.value.public_message == "The MCP service is temporarily unavailable."
